@@ -183,12 +183,6 @@ class StaffController extends Controller {
             exit;
         }
         
-        if (strtolower($username) === 'admin') {
-            $_SESSION['error'] = 'Please use the Super Admin portal.';
-            header('Location: ' . BASE_URL . '/?req=superadmin');
-            exit;
-        }
-
         $result = $this->staffModel->authenticate($username, $password);
         
         if ($result['status'] === 'OK') {
@@ -324,8 +318,7 @@ class StaffController extends Controller {
 
         // Block super admin accounts from staff portal
         $role = $_SESSION['staff_role'] ?? '';
-        $staffUsername = $_SESSION['staff_username'] ?? '';
-        if ($role === 'super_admin' || strtolower($staffUsername) === 'admin') {
+        if ($role === 'super_admin') {
             header('Location: ' . BASE_URL . '/?req=superadmin');
             exit;
         }

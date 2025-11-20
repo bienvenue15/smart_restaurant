@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RBAC Test - Smart Restaurant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .test-section {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .test-section h2 {
+            color: #333;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .role-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .role-btn {
+            padding: 10px 20px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .role-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .role-btn.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .permission-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .permission-item {
+            padding: 10px;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .permission-item.granted {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .permission-item.denied {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .permission-item i {
+            font-size: 18px;
+        }
+        
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .info-box strong {
+            color: #0d47a1;
+        }
+        
+        .test-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .test-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .test-btn.primary {
+            background: #28a745;
+            color: white;
+        }
+        
+        .test-btn.secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .test-btn.danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .test-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        
+        .result.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .result.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .result.show {
+            display: block;
+        }
+        
+        .copyright {
+            text-align: center;
+            color: white;
+            margin-top: 30px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 RBAC Testing Dashboard</h1>
+        
+        <div class="test-section">
+            <h2>1. Select Test Role</h2>
+            <div class="role-selector">
+                <button class="role-btn" onclick="selectRole('admin')">👑 Admin</button>
+                <button class="role-btn" onclick="selectRole('manager')">💼 Manager</button>
+                <button class="role-btn" onclick="selectRole('cashier')">💰 Cashier</button>
+                <button class="role-btn" onclick="selectRole('waiter')">🍽️ Waiter</button>
+                <button class="role-btn" onclick="selectRole('kitchen')">👨‍🍳 Kitchen</button>
+            </div>
+            
+            <div class="info-box">
+                <strong>Selected Role:</strong> <span id="selectedRole">None</span><br>
+                <strong>Test Credentials:</strong> <span id="testCredentials">-</span>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>2. Permission Matrix</h2>
+            <div id="permissionMatrix" class="permission-grid">
+                <p style="color: #666;">Select a role above to view permissions</p>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>3. Test Actions</h2>
+            <div class="test-actions">
+                <button class="test-btn primary" onclick="testLogin()">
+                    <i class="fas fa-sign-in-alt"></i> Test Login
+                </button>
+                <button class="test-btn primary" onclick="testClockIn()">
+                    <i class="fas fa-clock"></i> Test Clock In
+                </button>
+                <button class="test-btn secondary" onclick="testOrderUpdate()">
+                    <i class="fas fa-shopping-cart"></i> Test Order Update
+                </button>
+                <button class="test-btn secondary" onclick="testTableReset()">
+                    <i class="fas fa-chair"></i> Test Table Reset
+                </button>
+                <button class="test-btn danger" onclick="testPayment()">
+                    <i class="fas fa-money-bill"></i> Test Payment Processing
+                </button>
+            </div>
+            <div id="testResult" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>4. Quick Links</h2>
+            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                <a href="/restaurant/?req=staff" style="text-decoration: none;">
+                    <button class="test-btn primary">
+                        <i class="fas fa-user-shield"></i> Staff Portal Login
+                    </button>
+                </a>
+                <a href="/restaurant/?req=staff&action=pending_approvals" style="text-decoration: none;">
+                    <button class="test-btn secondary">
+                        <i class="fas fa-check-circle"></i> Pending Approvals
+                    </button>
+                </a>
+                <a href="/restaurant/" style="text-decoration: none;">
+                    <button class="test-btn secondary">
+                        <i class="fas fa-home"></i> Customer Home
+                    </button>
+                </a>
+            </div>
+        </div>
+        
+        <div class="copyright">
+            © 2025 Inovasiyo Ltd. All rights reserved.
+        </div>
+    </div>
+    
+    <script>
+        let currentRole = null;
+        
+        const rolePermissions = {
+            admin: [
+                'view_orders', 'create_orders', 'update_orders', 'cancel_orders', 'refund_orders',
+                'process_payment', 'refund_payment', 'view_payment', 'handle_cash', 'verify_payment',
+                'view_tables', 'manage_tables', 'reset_table',
+                'view_menu', 'create_menu', 'update_menu', 'delete_menu',
+                'view_staff', 'create_staff', 'update_staff', 'delete_staff',
+                'view_reports', 'view_sales', 'view_detailed_reports',
+                'system_settings', 'approve_actions'
+            ],
+            manager: [
+                'view_orders', 'create_orders', 'update_orders', 'cancel_orders', 'refund_orders',
+                'process_payment', 'refund_payment', 'view_payment', 'handle_cash', 'verify_payment',
+                'view_tables', 'manage_tables', 'reset_table',
+                'view_menu', 'create_menu', 'update_menu', 'delete_menu',
+                'view_staff', 'create_staff', 'update_staff',
+                'view_reports', 'view_sales', 'view_detailed_reports',
+                'approve_actions'
+            ],
+            cashier: [
+                'view_orders', 'update_orders',
+                'process_payment', 'view_payment', 'handle_cash',
+                'view_tables',
+                'view_menu',
+                'view_reports'
+            ],
+            waiter: [
+                'view_orders', 'create_orders', 'update_orders',
+                'view_tables', 'manage_tables',
+                'view_menu'
+            ],
+            kitchen: [
+                'view_orders', 'update_orders',
+                'view_menu'
+            ]
+        };
+        
+        const roleInfo = {
+            admin: { name: 'Administrator', username: 'admin', password: 'admin123' },
+            manager: { name: 'Manager', username: 'manager', password: 'admin123' },
+            cashier: { name: 'Cashier', username: 'cashier', password: 'admin123' },
+            waiter: { name: 'Waiter', username: 'waiter1', password: 'admin123' },
+            kitchen: { name: 'Kitchen Staff', username: 'kitchen', password: 'admin123' }
+        };
+        
+        function selectRole(role) {
+            currentRole = role;
+            
+            // Update UI
+            document.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            document.getElementById('selectedRole').textContent = roleInfo[role].name;
+            document.getElementById('testCredentials').textContent = 
+                `Username: ${roleInfo[role].username} | Password: ${roleInfo[role].password}`;
+            
+            // Show permissions
+            showPermissions(role);
+        }
+        
+        function showPermissions(role) {
+            const matrix = document.getElementById('permissionMatrix');
+            const permissions = rolePermissions[role];
+            
+            let html = '';
+            
+            // All possible permissions
+            const allPermissions = [
+                'view_orders', 'create_orders', 'update_orders', 'cancel_orders', 'refund_orders',
+                'process_payment', 'refund_payment', 'view_payment', 'handle_cash', 'verify_payment',
+                'view_tables', 'manage_tables', 'reset_table',
+                'view_menu', 'create_menu', 'update_menu', 'delete_menu',
+                'view_staff', 'create_staff', 'update_staff', 'delete_staff',
+                'view_reports', 'view_sales', 'view_detailed_reports',
+                'system_settings', 'approve_actions'
+            ];
+            
+            allPermissions.forEach(perm => {
+                const granted = permissions.includes(perm);
+                const icon = granted ? 'fa-check-circle' : 'fa-times-circle';
+                const className = granted ? 'granted' : 'denied';
+                
+                html += `
+                    <div class="permission-item ${className}">
+                        <i class="fas ${icon}"></i>
+                        <span>${perm.replace(/_/g, ' ').toUpperCase()}</span>
+                    </div>
+                `;
+            });
+            
+            matrix.innerHTML = html;
+        }
+        
+        function showResult(message, isSuccess) {
+            const result = document.getElementById('testResult');
+            result.className = 'result show ' + (isSuccess ? 'success' : 'error');
+            result.innerHTML = `<strong>${isSuccess ? '✓ Success:' : '✗ Error:'}</strong> ${message}`;
+        }
+        
+        function testLogin() {
+            if (!currentRole) {
+                showResult('Please select a role first', false);
+                return;
+            }
+            
+            const info = roleInfo[currentRole];
+            showResult(`Login credentials ready: ${info.username} / ${info.password}. Click "Staff Portal Login" to test.`, true);
+        }
+        
+        function testClockIn() {
+            if (!currentRole) {
+                showResult('Please select a role first', false);
+                return;
+            }
+            
+            showResult('Clock in feature available after login. All roles can clock in.', true);
+        }
+        
+        function testOrderUpdate() {
+            if (!currentRole) {
+                showResult('Please select a role first', false);
+                return;
+            }
+            
+            const hasPermission = rolePermissions[currentRole].includes('update_orders');
+            
+            if (hasPermission) {
+                showResult(`${roleInfo[currentRole].name} can update orders. Test this in the dashboard.`, true);
+            } else {
+                showResult(`${roleInfo[currentRole].name} CANNOT update orders. Permission denied.`, false);
+            }
+        }
+        
+        function testTableReset() {
+            if (!currentRole) {
+                showResult('Please select a role first', false);
+                return;
+            }
+            
+            const hasPermission = rolePermissions[currentRole].includes('reset_table');
+            
+            if (hasPermission) {
+                showResult(`${roleInfo[currentRole].name} can reset tables. Test this in the dashboard.`, true);
+            } else {
+                showResult(`${roleInfo[currentRole].name} CANNOT reset tables. Permission denied.`, false);
+            }
+        }
+        
+        function testPayment() {
+            if (!currentRole) {
+                showResult('Please select a role first', false);
+                return;
+            }
+            
+            const hasPermission = rolePermissions[currentRole].includes('process_payment');
+            
+            if (hasPermission) {
+                showResult(`${roleInfo[currentRole].name} can process payments. Handle cash: ${rolePermissions[currentRole].includes('handle_cash')}`, true);
+            } else {
+                showResult(`${roleInfo[currentRole].name} CANNOT process payments. This is CRITICAL for fraud prevention!`, false);
+            }
+        }
+    </script>
+</body>
+</html>

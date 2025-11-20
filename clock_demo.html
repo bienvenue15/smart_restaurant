@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Clock Demo - Smart Restaurant</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .demo-container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2rem;
+        }
+        
+        .clock-display {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 30px;
+            border-radius: 15px;
+            border: 3px solid #667eea;
+            margin: 30px 0;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .clock-label {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .clock-time {
+            font-family: 'Courier New', monospace;
+            font-size: 3.5rem;
+            font-weight: bold;
+            color: #667eea;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            letter-spacing: 3px;
+        }
+        
+        .clock-icon {
+            font-size: 2rem;
+            color: #667eea;
+            margin-bottom: 10px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .info-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 30px;
+            text-align: left;
+        }
+        
+        .info-box h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .info-box ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .info-box li {
+            padding: 8px 0;
+            color: #555;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .info-box li i {
+            color: #28a745;
+            font-size: 1.2rem;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .feature-card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #e1e8ed;
+        }
+        
+        .feature-card i {
+            font-size: 2rem;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .feature-card p {
+            color: #666;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        
+        .timestamp {
+            color: #999;
+            font-size: 0.85rem;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1><i class="fas fa-utensils"></i> Smart Restaurant System</h1>
+        
+        <div class="clock-display">
+            <div class="clock-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="clock-label">Live System Clock</div>
+            <div class="clock-time" id="liveClock">Loading...</div>
+            <div style="color: #666; margin-top: 15px; font-size: 1.1rem;">
+                <i class="fas fa-calendar"></i> <span id="currentDate"></span>
+            </div>
+        </div>
+        
+        <div class="info-box">
+            <h3>
+                <i class="fas fa-check-circle"></i>
+                Live Clock Features
+            </h3>
+            <ul>
+                <li>
+                    <i class="fas fa-check"></i>
+                    <span><strong>Real-time Updates:</strong> Clock updates every second</span>
+                </li>
+                <li>
+                    <i class="fas fa-check"></i>
+                    <span><strong>Accurate Counting:</strong> JavaScript setInterval at 1000ms</span>
+                </li>
+                <li>
+                    <i class="fas fa-check"></i>
+                    <span><strong>No Page Refresh:</strong> Pure JavaScript implementation</span>
+                </li>
+                <li>
+                    <i class="fas fa-check"></i>
+                    <span><strong>12-Hour Format:</strong> AM/PM display with seconds</span>
+                </li>
+            </ul>
+        </div>
+        
+        <div class="feature-grid">
+            <div class="feature-card">
+                <i class="fas fa-dashboard"></i>
+                <p>Dashboard</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-chart-bar"></i>
+                <p>Reports</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-cash-register"></i>
+                <p>Cash Management</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-check-circle"></i>
+                <p>Approvals</p>
+            </div>
+        </div>
+        
+        <div class="timestamp">
+            <i class="fas fa-info-circle"></i>
+            Clock updates every 1000 milliseconds (1 second) without page refresh
+        </div>
+    </div>
+    
+    <script>
+        // Update current time with seconds - accurate live clock
+        function updateTime() {
+            const now = new Date();
+            
+            // Format time with seconds
+            const timeStr = now.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit',
+                hour12: true 
+            });
+            
+            // Format date
+            const dateStr = now.toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            
+            document.getElementById('liveClock').textContent = timeStr;
+            document.getElementById('currentDate').textContent = dateStr;
+        }
+        
+        // Initialize clock
+        updateTime();
+        
+        // Update every second (1000 milliseconds)
+        setInterval(updateTime, 1000);
+        
+        // Log to console for verification
+        console.log('Live clock initialized - updating every 1 second');
+        console.log('No page refresh required - pure JavaScript implementation');
+    </script>
+</body>
+</html>

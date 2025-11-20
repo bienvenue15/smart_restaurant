@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo Access - Smart Restaurant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .demo-container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        
+        .demo-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .demo-header h1 {
+            color: #1f2937;
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        
+        .demo-header p {
+            color: #6b7280;
+            font-size: 1rem;
+        }
+        
+        .info-box {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+        }
+        
+        .info-box h3 {
+            color: #92400e;
+            margin-bottom: 8px;
+            font-size: 1rem;
+        }
+        
+        .info-box p {
+            color: #78350f;
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+        
+        .table-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .table-link {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px 20px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+        
+        .table-link:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
+        }
+        
+        .table-link i {
+            font-size: 1.5rem;
+        }
+        
+        .features {
+            background: #f3f4f6;
+            padding: 20px;
+            border-radius: 12px;
+        }
+        
+        .features h3 {
+            color: #1f2937;
+            margin-bottom: 15px;
+            font-size: 1.125rem;
+        }
+        
+        .features ul {
+            list-style: none;
+        }
+        
+        .features li {
+            color: #4b5563;
+            padding: 8px 0;
+            padding-left: 30px;
+            position: relative;
+            font-size: 0.9375rem;
+        }
+        
+        .features li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #10b981;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+        
+        .production-note {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fee2e2;
+            border-left: 4px solid #ef4444;
+            border-radius: 8px;
+        }
+        
+        .production-note strong {
+            color: #991b1b;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .production-note p {
+            color: #7f1d1d;
+            font-size: 0.875rem;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="demo-container">
+        <div class="demo-header">
+            <h1><i class="fas fa-utensils"></i> Smart Restaurant</h1>
+            <p>Demo Access - Testing Mode</p>
+        </div>
+        
+        <div class="info-box">
+            <h3><i class="fas fa-info-circle"></i> Demo Mode</h3>
+            <p>Demo mode allows you to test the system without scanning QR codes. Simply click on any table below to access the menu.</p>
+        </div>
+        
+        <div class="table-links">
+            <a href="?req=menu&demo=1&table=T001" class="table-link">
+                <span><i class="fas fa-chair"></i> Table T001</span>
+                <i class="fas fa-arrow-right"></i>
+            </a>
+            <a href="?req=menu&demo=1&table=T002" class="table-link">
+                <span><i class="fas fa-chair"></i> Table T002</span>
+                <i class="fas fa-arrow-right"></i>
+            </a>
+            <a href="?req=menu&demo=1&table=T003" class="table-link">
+                <span><i class="fas fa-chair"></i> Table T003</span>
+                <i class="fas fa-arrow-right"></i>
+            </a>
+            <a href="?req=menu&demo=1&table=T004" class="table-link">
+                <span><i class="fas fa-chair"></i> Table T004</span>
+                <i class="fas fa-arrow-right"></i>
+            </a>
+            <a href="?req=menu&demo=1&table=T005" class="table-link">
+                <span><i class="fas fa-chair"></i> Table T005</span>
+                <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+        
+        <div class="features">
+            <h3><i class="fas fa-star"></i> Available Features</h3>
+            <ul>
+                <li>Browse complete menu with categories</li>
+                <li>Add items to cart with quantities</li>
+                <li>Place orders with special instructions</li>
+                <li>Call waiter with different request types</li>
+                <li>View order history for the table</li>
+                <li>Cancel orders within 1-minute window</li>
+                <li>Real-time countdown timer for cancellation</li>
+                <li>Session-based table locking</li>
+                <li>XSS protection and input sanitization</li>
+            </ul>
+        </div>
+        
+        <div class="production-note">
+            <strong><i class="fas fa-exclamation-triangle"></i> Production Mode</strong>
+            <p>In production, customers MUST scan QR codes to access the menu. Demo mode is for testing purposes only and should be disabled before deployment.</p>
+        </div>
+    </div>
+</body>
+</html>

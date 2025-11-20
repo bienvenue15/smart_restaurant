@@ -124,7 +124,7 @@
                                         <button class="btn-small btn-primary" onclick="viewOrder(<?php echo $order['id']; ?>)">
                                             <i class="fas fa-eye"></i> View
                                         </button>
-                                        <?php if ($order['status'] === 'pending' && in_array($user['role'], ['admin', 'manager', 'kitchen'])): ?>
+                                        <?php if ($order['status'] === 'pending' && Permission::check('manage_orders')): ?>
                                         <button class="btn-small btn-success" onclick="confirmOrder(<?php echo $order['id']; ?>)">
                                             <i class="fas fa-check"></i> Confirm
                                         </button>
@@ -174,7 +174,7 @@
                                         echo date('H:i', $time) . ' (' . floor((time() - $time) / 60) . ' min ago)';
                                         ?>
                                     </div>
-                                    <?php if (in_array($user['role'], ['admin', 'manager', 'waiter'])): ?>
+                                    <?php if (Permission::check('manage_tables')): ?>
                                     <div class="call-actions">
                                         <button class="btn-small btn-primary" onclick="assignCall(<?php echo $call['id']; ?>)">
                                             <i class="fas fa-user-check"></i> Assign to Me

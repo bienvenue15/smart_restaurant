@@ -328,6 +328,9 @@ class Staff extends Model {
             if (!$role) {
                 return false;
             }
+            if ($role === 'owner') {
+                return true;
+            }
             
             // Check if role has permission
             $query = "SELECT COUNT(*) FROM role_permissions rp

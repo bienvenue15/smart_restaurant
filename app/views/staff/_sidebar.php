@@ -20,8 +20,11 @@ $hasAdminPanel = \Permission::check('manage_menu')
             <img src="<?php echo APP_LOGO_URL; ?>" alt="Smart Restaurant logo">
             <span>Smart Restaurant</span>
         </div>
+        <?php 
+            $displayRole = (isset($user['role']) && ($user['role'] === 'admin' || $user['role'] === 'owner')) ? 'Owner' : ucfirst($user['role'] ?? '');
+        ?>
         <div class="role-badge role-<?php echo htmlspecialchars($user['role']); ?>">
-            <?php echo htmlspecialchars(ucfirst($user['role'])); ?>
+            <?php echo htmlspecialchars($displayRole); ?>
         </div>
     </div>
     
@@ -170,7 +173,8 @@ $hasAdminPanel = \Permission::check('manage_menu')
             </div>
             <div class="user-details">
                 <div class="user-name"><?php echo htmlspecialchars($user['full_name']); ?></div>
-                <div class="user-role"><?php echo htmlspecialchars($user['username']); ?></div>
+                <?php $displayUsername = (isset($user['role']) && ($user['role'] === 'admin' || $user['role'] === 'owner')) ? 'owner' : ($user['username'] ?? ''); ?>
+                <div class="user-role"><?php echo htmlspecialchars($displayUsername); ?></div>
             </div>
         </div>
         <a href="<?php echo BASE_URL; ?>/?req=staff&action=logout" class="btn-logout">

@@ -186,6 +186,12 @@ class StaffController extends Controller {
         $result = $this->staffModel->authenticate($username, $password);
         
         if ($result['status'] === 'OK') {
+            if (($result['data']['role'] ?? '') === 'super_admin') {
+                $_SESSION['error'] = 'Please use the Super Admin portal.';
+                header('Location: ' . BASE_URL . '/?req=superadmin');
+                exit;
+            }
+
             $_SESSION['staff_user'] = $result['data'];
             $_SESSION['staff_logged_in'] = true;
             
@@ -307,6 +313,13 @@ class StaffController extends Controller {
     private function requireLogin() {
         if (!$this->isLoggedIn()) {
             header('Location: ' . BASE_URL . '/?req=staff');
+            exit;
+        }
+
+        // Block super admin accounts from staff portal
+        $role = $_SESSION['staff_role'] ?? '';
+        if ($role === 'super_admin') {
+            header('Location: ' . BASE_URL . '/?req=superadmin');
             exit;
         }
     }

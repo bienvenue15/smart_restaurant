@@ -5,7 +5,12 @@
 if (!isset($stats)) {
     $stats = [];
 }
-$isAdminRole = isset($user['role']) && $user['role'] === 'admin';
+$hasAdminPanel = \Permission::check('manage_menu')
+    || \Permission::check('manage_tables')
+    || \Permission::check('manage_orders')
+    || \Permission::check('manage_staff')
+    || \Permission::check('manage_settings')
+    || \Permission::check('view_reports');
 ?>
 
 <!-- Sidebar Navigation -->
@@ -41,7 +46,7 @@ $isAdminRole = isset($user['role']) && $user['role'] === 'admin';
         <?php endif; ?>
         
         <!-- Waiter Calls - Admin, Manager, Waiter only -->
-        <?php if (in_array($user['role'], ['admin', 'manager', 'waiter']) && Permission::check('view_tables')): ?>
+        <?php if (Permission::check('view_tables')): ?>
         <a href="<?php echo BASE_URL; ?>/?req=staff&action=orders_manage" class="nav-item"
            data-section="orders_manage" onclick="return navigateTo('orders_manage', event);">
             <i class="fas fa-bell"></i>
@@ -53,7 +58,7 @@ $isAdminRole = isset($user['role']) && $user['role'] === 'admin';
         <?php endif; ?>
         
         <!-- Tables - Admin, Manager, Waiter, Cashier only (not kitchen) -->
-        <?php if (in_array($user['role'], ['admin', 'manager', 'waiter', 'cashier']) && (Permission::check('manage_tables') || Permission::check('view_tables'))): ?>
+        <?php if (Permission::check('manage_tables') || Permission::check('view_tables')): ?>
         <a href="<?php echo BASE_URL; ?>/?req=staff&action=tables" class="nav-item"
            data-section="tables" onclick="return navigateTo('tables', event);">
             <i class="fas fa-chair"></i>
@@ -71,7 +76,7 @@ $isAdminRole = isset($user['role']) && $user['role'] === 'admin';
         <?php endif; ?>
         
         <!-- Cash Register - Admin, Manager, Cashier only -->
-        <?php if (in_array($user['role'], ['admin', 'manager', 'cashier']) && ($canHandleCash ?? Permission::check('handle_cash'))): ?>
+        <?php if ($canHandleCash ?? Permission::check('handle_cash')): ?>
         <a href="<?php echo BASE_URL; ?>/?req=staff&action=cash_management" class="nav-item">
             <i class="fas fa-cash-register"></i>
             <span>Cash Register</span>
@@ -79,7 +84,7 @@ $isAdminRole = isset($user['role']) && $user['role'] === 'admin';
         <?php endif; ?>
         
         <!-- Approvals - Admin, Manager only -->
-        <?php if (in_array($user['role'], ['admin', 'manager']) && ($canApprove ?? Permission::check('approve_actions'))): ?>
+        <?php if ($canApprove ?? Permission::check('approve_actions')): ?>
         <a href="<?php echo BASE_URL; ?>/?req=staff&action=pending_approvals" class="nav-item">
             <i class="fas fa-check-circle"></i>
             <span>Approvals</span>
@@ -87,7 +92,7 @@ $isAdminRole = isset($user['role']) && $user['role'] === 'admin';
         <?php endif; ?>
         
         <!-- Reports - Admin, Manager only -->
-        <?php if (in_array($user['role'], ['admin', 'manager']) && Permission::check('view_reports')): ?>
+        <?php if (Permission::check('view_reports')): ?>
         <a href="<?php echo BASE_URL; ?>/?req=staff&action=reports" class="nav-item"
            data-section="reports" onclick="return navigateTo('reports', event);">
             <i class="fas fa-chart-bar"></i>
@@ -95,7 +100,7 @@ $isAdminRole = isset($user['role']) && $user['role'] === 'admin';
         </a>
         <?php endif; ?>
         
-        <?php if ($isAdminRole): ?>
+        <?php if ($hasAdminPanel): ?>
         <div class="nav-divider" style="margin: 15px 0; border-top: 1px solid rgba(255,255,255,0.2);"></div>
         <div class="nav-section-header" style="padding: 10px 20px; color: rgba(255,255,255,0.7); font-size: 11px; text-transform: uppercase; font-weight: 600;">
             Admin Panel
@@ -113,9 +118,7 @@ $isAdminRole = isset($user['role']) && $user['role'] === 'admin';
             <span>Tables Management</span>
         </a>
         
-        <?php 
-        // Staff Management - Admin Only (not manager)
-        if (isset($user['role']) && $user['role'] === 'admin'): ?>
+        <?php if (\Permission::check('manage_staff')): ?>
         <!-- Staff Management - Admin Only -->
         <a href="<?php echo BASE_URL; ?>/?req=staff&action=staff_manage" class="nav-item <?php echo ($page ?? '') === 'staff_manage' ? 'active' : ''; ?>" 
            data-section="staff_manage" onclick="return navigateTo('staff_manage', event);">

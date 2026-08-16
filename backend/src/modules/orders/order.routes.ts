@@ -39,6 +39,29 @@ customerOrderRouter.post('/:orderId/cancel', requireCustomerSession, async (req,
 export const staffOrderRouter = Router();
 staffOrderRouter.use(requireStaffAuth);
 
+staffOrderRouter.get('/', requirePermission('view_orders'), async (req, res, next) => {
+  try {
+    const orders = await orderService.listOrders(
+      req.staff!.restaurantId!,
+      req.staff!.id,
+      req.staff!.role,
+      req.query.status as never,
+    );
+    res.json({ status: 'OK', data: orders });
+  } catch (err) {
+    next(err);
+  }
+});
+
+staffOrderRouter.get('/:orderId', requirePermission('view_orders'), async (req, res, next) => {
+  try {
+    const order = await orderService.getOrderById(req.staff!.restaurantId!, req.params.orderId!);
+    res.json({ status: 'OK', data: order });
+  } catch (err) {
+    next(err);
+  }
+});
+
 staffOrderRouter.patch(
   '/:orderId/status',
   requireActiveShift,

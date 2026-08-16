@@ -81,6 +81,41 @@ export async function createOrder(restaurantId: string, tableId: string, items: 
   });
 }
 
+/**
+ * Role-scoped order listing, ported from `Order::getOrders()`
+ * (docs/CURRENT_SYSTEM_AUDIT.md §4): kitchen only sees orders a waiter has
+ * already confirmed (raw PENDING orders are invisible to kitchen — they
+ * haven't been accepted into the prep pipeline yet), waiters see only
+ * their own orders (confirmed or served by them), everyone else sees the
+ * full restaurant order list.
+ */
+export async function listOrders(restaurantId: string, staffId: string, role: string, statusFilter?: OrderStatus) {
+  const where: Record<string, unknown> = { restaurantId };
+  if (statusFilter) where.status = statusFilter;
+
+  if (role === 'KITCHEN') {
+    where.status = statusFilter ?? { in: [OrderStatus.CONFIRMED, OrderStatus.PREPARING, OrderStatus.READY] };
+  } else if (role === 'WAITER') {
+    where.OR = [{ confirmedById: staffId }, { servedById: staffId }, { createdByStaffId: staffId }];
+  }
+
+  return prisma.order.findMany({
+    where,
+    include: { items: { include: { menuItem: { select: { name: true } } } }, table: { select: { tableNumber: true } } },
+    orderBy: { createdAt: 'desc' },
+    take: 100,
+  });
+}
+
+export async function getOrderById(restaurantId: string, orderId: string) {
+  const order = await prisma.order.findFirst({
+    where: { id: orderId, restaurantId },
+    include: { items: { include: { menuItem: { select: { name: true } } } }, table: true, payments: true },
+  });
+  if (!order) throw NotFound('Order not found');
+  return order;
+}
+
 function generateOrderNumber(): string {
   const now = new Date();
   const stamp = now.toISOString().replace(/[-:.TZ]/g, '').slice(0, 14);

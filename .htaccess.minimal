@@ -1,0 +1,18 @@
+# ============================================
+# Minimal .htaccess for Testing
+# Use this if the full .htaccess causes 500 errors
+# ============================================
+
+# Enable Rewrite Engine
+RewriteEngine On
+
+# Main routing
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php?req=$1 [QSA,L]
+
+# Protect sensitive files (basic)
+<FilesMatch "(^\.htaccess|^\.env|\.sql$)">
+    Order allow,deny
+    Deny from all
+</FilesMatch>

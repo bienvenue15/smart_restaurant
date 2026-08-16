@@ -1,0 +1,700 @@
+/**
+ * Customer Menu - Enhanced Features
+ * Device Locking, Order Tracking, Add Items, Bill Request
+ */
+
+class CustomerMenu {
+    constructor() {
+        this.tableData = window.TABLE_DATA || null;
+        this.baseUrl = window.BASE_URL || '';
+        this.restaurantId = window.RESTAURANT_ID || null;
+        this.cart = [];
+        this.activeOrders = [];
+        this.pollingInterval = null;
+        this.deviceLocked = false;
+        this.lockBadge = null;
+        this.lockCheckInterval = null;
+        
+        console.log('[CustomerMenu] Constructor - tableData:', this.tableData);
+        console.log('[CustomerMenu] Constructor - baseUrl:', this.baseUrl);
+        console.log('[CustomerMenu] Constructor - restaurantId:', this.restaurantId);
+        
+        this.init();
+    }
+    
+    init() {
+        console.log('[Customer Menu] Initializing...', this.tableData);
+        
+        if (!this.tableData) {
+            console.error('[Customer Menu] TABLE_DATA is missing!');
+            return;
+        }
+        
+        // Check device lock status
+        this.checkDeviceLock();
+        
+        // Load active orders
+        this.loadActiveOrders();
+        
+        // Start polling for order status updates (every 10 seconds)
+        this.startOrderStatusPolling();
+        
+        // Setup event listeners
+        this.setupEventListeners();
+        
+        // Show session info
+        this.displaySessionInfo();
+    }
+    
+    /**
+     * Check if device is locked to this table
+     */
+    async checkDeviceLock() {
+        try {
+            const response = await fetch(`${this.baseUrl}/app/controllers/api.php?action=check_device_lock`);
+            const result = await response.json();
+            
+            if (result.status === 'OK') {
+                this.deviceLocked = result.locked;
+                
+                if (result.locked) {
+                    console.log('[Device Lock] Device locked to table:', result.table_number);
+                    this.showDeviceLockBadge(result);
+                } else {
+                    console.log('[Device Lock] Device not locked');
+                }
+            }
+        } catch (error) {
+            console.error('[Device Lock] Error:', error);
+        }
+    }
+    
+    /**
+     * Display device lock badge
+     */
+    showDeviceLockBadge(lockInfo) {
+        // Update existing badge or create new one
+        if (!this.lockBadge) {
+            this.lockBadge = document.createElement('div');
+            this.lockBadge.className = 'device-lock-badge';
+            document.querySelector('.menu-header').appendChild(this.lockBadge);
+            
+            // Start periodic lock refresh (every 30 seconds)
+            if (!this.lockCheckInterval) {
+                this.lockCheckInterval = setInterval(() => {
+                    this.checkDeviceLock();
+                }, 30000);
+            }
+        }
+        
+        // Update badge content
+        this.lockBadge.innerHTML = `
+            <i class="fas fa-lock"></i>
+            <span>Locked to Table ${lockInfo.table_number}</span>
+            <small>Expires: ${this.formatTime(lockInfo.expires_at)}</small>
+        `;
+    }
+    
+    /**
+     * Load active orders for this table
+     */
+    async loadActiveOrders() {
+        console.log('[Active Orders] Loading...');
+        try {
+            const response = await fetch(`${this.baseUrl}/app/controllers/api.php?action=get_active_orders`);
+            console.log('[Active Orders] Response status:', response.status);
+            
+            const result = await response.json();
+            console.log('[Active Orders] Result:', result);
+            
+            if (result.status === 'OK') {
+                this.activeOrders = result.data || [];
+                console.log('[Active Orders] Loaded orders:', this.activeOrders.length);
+                this.displayActiveOrders();
+            } else {
+                console.error('[Active Orders] Error:', result.message);
+                const container = document.getElementById('activeOrdersContainer');
+                if (container) {
+                    container.innerHTML = `<p class="error-message">${result.message || 'Failed to load orders'}</p>`;
+                }
+            }
+        } catch (error) {
+            console.error('[Active Orders] Exception:', error);
+            const container = document.getElementById('activeOrdersContainer');
+            if (container) {
+                container.innerHTML = '<p class="error-message">Failed to load orders. Please refresh the page.</p>';
+            }
+        }
+    }
+    
+    /**
+     * Display active orders
+     */
+    displayActiveOrders() {
+        const container = document.getElementById('activeOrdersContainer');
+        if (!container) return;
+        
+        if (this.activeOrders.length === 0) {
+            container.innerHTML = '<p class="no-orders">No active orders</p>';
+            return;
+        }
+        
+        let html = '<div class="active-orders-list">';
+        
+        this.activeOrders.forEach(order => {
+            const progress = this.calculateProgress(order.status);
+            const statusClass = this.getStatusClass(order.status);
+            
+            html += `
+                <div class="order-card" data-order-id="${order.id}">
+                    <div class="order-header">
+                        <h4>Order #${order.order_number}</h4>
+                        <span class="status-badge ${statusClass}">${order.status}</span>
+                    </div>
+                    
+                    <div class="order-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${progress}%"></div>
+                        </div>
+                        <small>${progress}% Complete</small>
+                    </div>
+                    
+                    <div class="order-items-summary">
+                        <p>${order.items_summary || 'Loading items...'}</p>
+                    </div>
+                    
+                    <div class="order-meta">
+                        <span><i class="fas fa-clock"></i> ${this.formatTime(order.created_at)}</span>
+                        <span><i class="fas fa-money-bill"></i> RWF ${this.formatMoney(order.total_amount)}</span>
+                    </div>
+                    
+                    <div class="order-actions">
+                        ${order.status === 'pending' || order.status === 'confirmed' ? 
+                            `<button class="btn-cancel" onclick="customerMenu.cancelOrder(${order.id}, '${order.order_number}')">
+                                <i class="fas fa-times-circle"></i> Cancel
+                            </button>` : ''}
+                        
+                        ${order.status === 'ready' || order.status === 'served' ? 
+                            `<button class="btn-request-bill" onclick="customerMenu.requestBill()">
+                                <i class="fas fa-receipt"></i> Request Bill
+                            </button>` : ''}
+                        
+                        <button class="btn-track" onclick="customerMenu.showOrderTracking(${order.id})">
+                            <i class="fas fa-route"></i> Track
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        container.innerHTML = html;
+    }
+    
+    /**
+     * Cancel order (Customer)
+     */
+    async cancelOrder(orderId, orderNumber) {
+        const confirmed = confirm(`Are you sure you want to cancel order ${orderNumber}?\n\nThis action cannot be undone.`);
+        if (!confirmed) return;
+        
+        console.log('[Cancel Order] Cancelling order:', orderId);
+        
+        try {
+            this.showLoading(true);
+            
+            const response = await fetch(`${this.baseUrl}/app/controllers/api.php?action=customer_cancel_order`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ order_id: orderId })
+            });
+            
+            const result = await response.json();
+            
+            if (result.status === 'OK') {
+                this.showAlert('✓ Order cancelled successfully', 'success');
+                
+                // Show notification
+                this.showNotification(
+                    'Order Cancelled',
+                    `Order ${orderNumber} has been cancelled.`,
+                    'success'
+                );
+                
+                // Reload active orders
+                setTimeout(() => this.loadActiveOrders(), 500);
+            } else {
+                this.showAlert('✗ ' + (result.message || 'Failed to cancel order'), 'error');
+            }
+        } catch (error) {
+            console.error('[Cancel Order] Error:', error);
+            this.showAlert('Network error. Please try again.', 'error');
+        } finally {
+            this.showLoading(false);
+        }
+    }
+    
+    /**
+     * Request bill
+     */
+    async requestBill() {
+        const confirmed = confirm('Request bill from your waiter?');
+        if (!confirmed) return;
+        
+        const message = prompt('Any special requests? (Optional)') || '';
+        
+        try {
+            this.showLoading(true);
+            
+            const response = await fetch(`${this.baseUrl}/app/controllers/api.php?action=request_bill`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message })
+            });
+            
+            const result = await response.json();
+            
+            if (result.status === 'OK') {
+                this.showAlert('Bill requested! A waiter will assist you shortly.', 'success');
+                
+                // Show notification
+                this.showNotification(
+                    'Bill Requested',
+                    'Your waiter has been notified. They will bring your bill shortly.',
+                    'success'
+                );
+            } else {
+                this.showAlert(result.message || 'Failed to request bill', 'error');
+            }
+        } catch (error) {
+            console.error('[Request Bill] Error:', error);
+            this.showAlert('Network error. Please try again.', 'error');
+        } finally {
+            this.showLoading(false);
+        }
+    }
+    
+    /**
+     * Show order tracking modal
+     */
+    async showOrderTracking(orderId) {
+        try {
+            const response = await fetch(`${this.baseUrl}/app/controllers/api.php?action=get_order_status&order_id=${orderId}`);
+            const result = await response.json();
+            
+            if (result.status === 'OK') {
+                this.displayOrderTrackingModal(result.order);
+            } else {
+                this.showAlert(result.message || 'Failed to load order status', 'error');
+            }
+        } catch (error) {
+            console.error('[Order Tracking] Error:', error);
+            this.showAlert('Network error. Please try again.', 'error');
+        }
+    }
+    
+    /**
+     * Display order tracking modal
+     */
+    displayOrderTrackingModal(order) {
+        const modal = document.getElementById('orderTrackingModal');
+        if (!modal) {
+            this.createOrderTrackingModal();
+        }
+        
+        // Store order data for re-rendering on language change
+        this.currentTrackingOrder = order;
+        
+        const statuses = ['pending', 'confirmed', 'preparing', 'ready', 'served'];
+        const currentIndex = statuses.indexOf(order.status);
+        
+        let trackingHtml = `
+            <div class="tracking-header">
+                <h3><span data-translate="orders.order_number">${this.getTranslation('orders.order_number')}</span> #${order.order_number}</h3>
+                <span class="status-badge ${this.getStatusClass(order.status)}" data-translate="orders.${order.status}">${this.getTranslation('orders.' + order.status)}</span>
+            </div>
+            
+            <div class="tracking-timeline">
+        `;
+        
+        statuses.forEach((status, index) => {
+            const isComplete = index <= currentIndex;
+            const isCurrent = index === currentIndex;
+            const icon = this.getStatusIcon(status);
+            
+            trackingHtml += `
+                <div class="timeline-item ${isComplete ? 'complete' : ''} ${isCurrent ? 'current' : ''}">
+                    <div class="timeline-icon">
+                        <i class="fas fa-${icon}"></i>
+                    </div>
+                    <div class="timeline-content">
+                        <h4 data-translate="orders.${status}">${this.getTranslation('orders.' + status)}</h4>
+                        <small data-translate="tracking.${status}_desc">${this.getStatusDescription(status)}</small>
+                        ${isComplete && order[status + '_at'] ? 
+                            `<time>${this.formatTime(order[status + '_at'])}</time>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+        
+        trackingHtml += '</div>';
+        
+        // Add individual item status tracking
+        if (order.items && order.items.length > 0) {
+            let itemStatusText = 'Item Status';
+            if (typeof dynamicLangSwitcher !== 'undefined' && dynamicLangSwitcher.getTranslation) {
+                const translation = dynamicLangSwitcher.getTranslation('tracking.item_status');
+                if (translation && !translation.includes('tracking.')) itemStatusText = translation;
+            }
+            
+            trackingHtml += `
+                <div class="item-tracking-section">
+                    <h4 style="margin: 20px 0 10px 0; font-size: 16px; color: #1f2937;" data-translate="tracking.item_status">
+                        <i class="fas fa-utensils"></i> ${itemStatusText}
+                    </h4>
+                    <div class="item-tracking-list">
+            `;
+            
+            const itemStatusColors = {
+                'pending': '#6c757d',
+                'preparing': '#ffc107',
+                'ready': '#17a2b8',
+                'served': '#28a745'
+            };
+            
+            order.items.forEach(item => {
+                const itemStatus = item.item_status || 'pending';
+                const statusColor = itemStatusColors[itemStatus] || '#6c757d';
+                
+                trackingHtml += `
+                    <div class="item-status-row" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #f9fafb; border-radius: 5px; margin-bottom: 8px;">
+                        <div style="flex: 1;">
+                            <strong>${item.item_name || item.name}</strong>
+                            <small style="display: block; color: #6b7280;">x${item.quantity}</small>
+                        </div>
+                        <span style="background: ${statusColor}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;" data-translate="orders.${itemStatus}">
+                            ${this.getTranslation('orders.' + itemStatus)}
+                        </span>
+                    </div>
+                `;
+            });
+            
+            trackingHtml += `
+                    </div>
+                </div>
+            `;
+        }
+        
+        if (order.estimated_time && !['served', 'completed'].includes(order.status)) {
+            trackingHtml += `
+                <div class="estimated-time">
+                    <i class="fas fa-clock"></i>
+                    <span>Estimated completion: ${order.estimated_time} minutes</span>
+                </div>
+            `;
+        }
+        
+        document.getElementById('trackingContent').innerHTML = trackingHtml;
+        document.getElementById('orderTrackingModal').classList.add('active');
+    }
+    
+    /**
+     * Start polling for order status updates
+     */
+    startOrderStatusPolling() {
+        // Poll every 10 seconds
+        this.pollingInterval = setInterval(() => {
+            this.loadActiveOrders();
+        }, 10000);
+    }
+    
+    /**
+     * Stop polling
+     */
+    stopOrderStatusPolling() {
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+            this.pollingInterval = null;
+        }
+    }
+    
+    /**
+     * Calculate progress percentage
+     */
+    calculateProgress(status) {
+        const progressMap = {
+            'pending': 10,
+            'confirmed': 30,
+            'preparing': 60,
+            'ready': 85,
+            'served': 100,
+            'completed': 100
+        };
+        return progressMap[status] || 0;
+    }
+    
+    /**
+     * Get status class
+     */
+    getStatusClass(status) {
+        const classMap = {
+            'pending': 'status-pending',
+            'confirmed': 'status-confirmed',
+            'preparing': 'status-preparing',
+            'ready': 'status-ready',
+            'served': 'status-served',
+            'completed': 'status-completed',
+            'cancelled': 'status-cancelled'
+        };
+        return classMap[status] || 'status-default';
+    }
+    
+    /**
+     * Get status icon
+     */
+    getStatusIcon(status) {
+        const iconMap = {
+            'pending': 'clock',
+            'confirmed': 'check',
+            'preparing': 'fire',
+            'ready': 'bell',
+            'served': 'utensils'
+        };
+        return iconMap[status] || 'circle';
+    }
+    
+    /**
+     * Get status description
+     */
+    getStatusDescription(status) {
+        let descMap = {
+            'pending': 'Order received, waiting for kitchen',
+            'confirmed': 'Kitchen has acknowledged your order',
+            'preparing': 'Your food is being prepared',
+            'ready': 'Order is ready to be served',
+            'served': 'Enjoy your meal!'
+        };
+        
+        // Use translations if available
+        if (typeof dynamicLangSwitcher !== 'undefined' && dynamicLangSwitcher.getTranslation) {
+            const key = `tracking.${status}_desc`;
+            const translation = dynamicLangSwitcher.getTranslation(key);
+            if (translation && !translation.includes('tracking.')) {
+                return translation;
+            }
+        }
+        
+        return descMap[status] || '';
+    }
+    
+    /**
+     * Get translation helper
+     */
+    getTranslation(key) {
+        if (typeof dynamicLangSwitcher !== 'undefined' && dynamicLangSwitcher.getTranslation) {
+            const translation = dynamicLangSwitcher.getTranslation(key);
+            // Only return if it's a valid translation (not the key itself)
+            if (translation && !translation.includes('.') && translation !== key) {
+                return translation;
+            }
+        }
+        // Fallback to capitalized last part of key
+        const parts = key.split('.');
+        return parts[parts.length - 1].charAt(0).toUpperCase() + parts[parts.length - 1].slice(1);
+    }
+    
+    /**
+     * Show notification
+     */
+    showNotification(title, message, type = 'info') {
+        // Check if browser supports notifications
+        if (!('Notification' in window)) {
+            console.log('Browser does not support notifications');
+            return;
+        }
+        
+        // Request permission if not granted
+        if (Notification.permission === 'granted') {
+            new Notification(title, {
+                body: message,
+                icon: '/assets/images/logo.png',
+                badge: '/assets/images/badge.png'
+            });
+        } else if (Notification.permission !== 'denied') {
+            Notification.requestPermission().then(permission => {
+                if (permission === 'granted') {
+                    new Notification(title, {
+                        body: message,
+                        icon: '/assets/images/logo.png'
+                    });
+                }
+            });
+        }
+        
+        // Also show in-app notification
+        this.showInAppNotification(title, message, type);
+    }
+    
+    /**
+     * Show in-app notification
+     */
+    showInAppNotification(title, message, type) {
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.innerHTML = `
+            <div class="notification-content">
+                <strong>${title}</strong>
+                <p>${message}</p>
+            </div>
+            <button class="notification-close" onclick="this.parentElement.remove()">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            notification.classList.add('fade-out');
+            setTimeout(() => notification.remove(), 300);
+        }, 5000);
+    }
+    
+    /**
+     * Display session info
+     */
+    displaySessionInfo() {
+        if (!this.tableData) return;
+        
+        const info = document.getElementById('sessionInfo');
+        if (info) {
+            info.innerHTML = `
+                <div class="session-badge">
+                    <i class="fas fa-chair"></i>
+                    <span>Table ${this.tableData.table_number}</span>
+                </div>
+            `;
+        }
+    }
+    
+    /**
+     * Helper functions
+     */
+    capitalize(str) {
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+    
+    formatTime(dateString) {
+        if (!dateString) return '-';
+        const date = new Date(dateString);
+        return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    }
+    
+    formatMoney(amount) {
+        return Number(amount).toLocaleString('en-US', { minimumFractionDigits: 0 });
+    }
+    
+    showAlert(message, type = 'info') {
+        alert(message); // Simple for now, can be enhanced
+    }
+    
+    showLoading(show) {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+            overlay.style.display = show ? 'flex' : 'none';
+        }
+    }
+    
+    setupEventListeners() {
+        // Close modals on outside click
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                e.target.classList.remove('active');
+            }
+        });
+        
+        // Handle page visibility changes
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                this.stopOrderStatusPolling();
+            } else {
+                this.startOrderStatusPolling();
+                this.loadActiveOrders();
+            }
+        });
+        
+        // Request notification permission on first interaction
+        document.addEventListener('click', () => {
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+        }, { once: true });
+    }
+    
+    closeAddItemsModal() {
+        const modal = document.getElementById('addItemsModal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+    }
+    
+    createOrderTrackingModal() {
+        // Create modal if it doesn't exist
+        const modal = document.createElement('div');
+        modal.id = 'orderTrackingModal';
+        modal.className = 'modal';
+        
+        let titleText = 'Order Tracking';
+        if (typeof dynamicLangSwitcher !== 'undefined' && dynamicLangSwitcher.getTranslation) {
+            const translation = dynamicLangSwitcher.getTranslation('tracking.title');
+            if (translation && !translation.includes('tracking.')) titleText = translation;
+        }
+        
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 data-translate="tracking.title">${titleText}</h3>
+                    <button class="close-modal" onclick="document.getElementById('orderTrackingModal').classList.remove('active')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body" id="trackingContent"></div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+}
+
+// Initialize when DOM is ready
+let customerMenu;
+
+// Use both DOMContentLoaded and immediate check
+function initCustomerMenu() {
+    console.log('[Init] Checking TABLE_DATA...', window.TABLE_DATA);
+    if (window.TABLE_DATA) {
+        console.log('[Init] Creating CustomerMenu instance');
+        customerMenu = new CustomerMenu();
+        
+        // Listen for language change events to update tracking modal
+        document.addEventListener('languageChanged', function(e) {
+            console.log('[CustomerMenu] Language changed to:', e.detail.language);
+            // If tracking modal is open, refresh it with current order data
+            if (customerMenu.currentTrackingOrder) {
+                const modal = document.getElementById('orderTrackingModal');
+                if (modal && modal.classList.contains('active')) {
+                    customerMenu.displayOrderTrackingModal(customerMenu.currentTrackingOrder);
+                }
+            }
+        });
+    } else {
+        console.warn('[Init] TABLE_DATA not available yet');
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCustomerMenu);
+} else {
+    // DOM already loaded
+    initCustomerMenu();
+}

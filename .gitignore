@@ -1,0 +1,118 @@
+# ============================================================
+# .gitignore - Smart Restaurant System
+# Local Development Files
+# ============================================================
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Local development overrides
+config.local.php
+
+# Database backups (keep structure, ignore data backups)
+backups/*.sql
+!backups/.gitkeep
+
+# Logs
+logs/*.log
+logs/*.txt
+*.log
+!logs/.gitkeep
+
+# Uploaded files
+assets/images/menu/*
+!assets/images/menu/.gitkeep
+!assets/images/menu/1/.gitkeep
+!assets/images/menu/2/.gitkeep
+
+# Generated QR codes (regenerate as needed)
+images/qrcodes/*.png
+images/qrcodes/*.pdf
+!images/qrcodes/.gitkeep
+
+# Temporary files
+tmp/*
+temp/*
+cache/*
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# OS files
+*.DS_Store
+desktop.ini
+$RECYCLE.BIN/
+
+# PHP
+vendor/
+composer.lock
+
+# Node modules (if using any build tools)
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+
+# Build files
+dist/
+build/
+
+# Session files
+sessions/*
+!sessions/.gitkeep
+
+# Error logs
+error_log
+php_errors.log
+
+# Database dumps (local testing) — may contain real restaurant contact data (PII)
+*.dump
+*.sql.gz
+*.sql
+!docs/**/*.sql
+
+# Personal notes (developers)
+NOTES.md
+TODO.md
+*.personal.md
+
+# Test data
+test_data/*
+sample_data/*
+
+# Coverage reports
+coverage/
+*.coverage
+
+# PHPUnit
+.phpunit.result.cache
+phpunit.xml
+
+# Database connection testing
+db_test.php
+connection_test.php
+
+# Local scripts (personal automation)
+*.local.ps1
+*.local.sh
+local-*.ps1
+local-*.sh
+
+# Sensitive data
+secrets.php
+credentials.php
+api_keys.php
+
+# Keep empty directories with .gitkeep
+!.gitkeep
+
+sessions/
+*.session

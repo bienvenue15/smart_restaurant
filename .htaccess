@@ -1,0 +1,138 @@
+# Smart Restaurant System - Secure Clean URLs
+# Hide implementation details and enhance security
+
+# Enable URL Rewriting
+RewriteEngine On
+RewriteBase /restaurant/
+
+# Security Headers
+<IfModule mod_headers.c>
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+</IfModule>
+
+# Hide server signature
+ServerSignature Off
+
+# Prevent directory listing
+Options -Indexes -MultiViews
+
+# Block access to sensitive files and directories
+<FilesMatch "\.(env|log|sql|md|backup|bak|config|ini|git|gitignore)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Block direct access to sensitive directories (except events.php for SSE)
+RedirectMatch 403 ^/restaurant/(src|logs|sessions|PHPMailer)/.*$
+RedirectMatch 403 ^/restaurant/app/(?!controllers/events\.php).*$
+
+# ============================================
+# CLEAN URL ROUTES - NO QUERY STRINGS EXPOSED
+# ============================================
+
+# Customer Menu - QR Code Access (UUID-based for security)
+RewriteRule ^menu/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$ index.php?req=menu&qr=$1 [L,QSA,NC]
+RewriteRule ^m/([A-Z0-9\-]+)$ index.php?req=menu&qr=$1 [L,QSA]
+
+# Order Tracking - UUID-based
+RewriteRule ^track/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$ index.php?req=track&order=$1 [L,QSA,NC]
+
+# Staff Portal - Clean hierarchical URLs
+RewriteRule ^staff/?$ index.php?req=staff&action=login [L,QSA]
+RewriteRule ^staff/login$ index.php?req=staff&action=login [L,QSA]
+RewriteRule ^staff/logout$ index.php?req=staff&action=logout [L,QSA]
+RewriteRule ^staff/dashboard$ index.php?req=staff&action=dashboard [L,QSA]
+RewriteRule ^staff/liabilities$ index.php?req=staff&page=liabilities [L,QSA]
+RewriteRule ^staff/reports$ index.php?req=staff&page=reports [L,QSA]
+RewriteRule ^staff/cash$ index.php?req=staff&action=cash_management [L,QSA]
+RewriteRule ^staff/subscription$ index.php?req=staff&page=subscription [L,QSA]
+RewriteRule ^staff/support$ index.php?req=staff&page=support [L,QSA]
+RewriteRule ^staff/approvals$ index.php?req=staff&page=approvals [L,QSA]
+
+# Admin Portal - Obscured path for additional security
+RewriteRule ^portal/?$ index.php?req=superadmin [L,QSA]
+RewriteRule ^portal/login$ index.php?req=superadmin [L,QSA]
+RewriteRule ^portal/dashboard$ index.php?req=superadmin&action=dashboard [L,QSA]
+RewriteRule ^portal/announcements$ index.php?req=superadmin&action=announcements [L,QSA]
+
+# Legacy admin redirects (for bookmarks)
+RewriteRule ^admin/?$ portal [R=301,L]
+RewriteRule ^admin/(.*)$ portal/$1 [R=301,L]
+
+# Registration & Signup
+RewriteRule ^register/?$ index.php?req=register [L,QSA]
+RewriteRule ^signup/?$ index.php?req=register [L,QSA]
+RewriteRule ^join/?$ index.php?req=register [L,QSA]
+
+# ============================================
+# API ROUTES - RESTful style, no implementation details
+# ============================================
+
+# Orders API - UUID based
+RewriteRule ^api/orders/update$ index.php?req=api&action=staff_update_order [L,QSA]
+RewriteRule ^api/orders/payment$ index.php?req=api&action=staff_process_payment [L,QSA]
+RewriteRule ^api/orders/remind$ index.php?req=api&action=remind_order [L,QSA]
+RewriteRule ^api/orders/confirm$ index.php?req=api&action=confirm_order [L,QSA]
+
+# Liabilities API - UUID based
+RewriteRule ^api/liabilities/stats$ index.php?req=api&action=staff_get_liability_stats [L,QSA]
+RewriteRule ^api/liabilities/all$ index.php?req=api&action=staff_get_all_liabilities [L,QSA]
+RewriteRule ^api/liabilities/my$ index.php?req=api&action=staff_get_my_liabilities [L,QSA]
+RewriteRule ^api/liabilities/mark-loss$ index.php?req=api&action=staff_mark_liability_loss [L,QSA]
+RewriteRule ^api/liabilities/waive$ index.php?req=api&action=staff_waive_liability [L,QSA]
+RewriteRule ^api/liabilities/performance$ index.php?req=api&action=staff_get_waiter_performance [L,QSA]
+
+# Dashboard API
+RewriteRule ^api/dashboard/stats$ index.php?req=api&action=staff_get_dashboard_stats [L,QSA]
+RewriteRule ^api/dashboard/calls$ index.php?req=staff&action=api&api_action=get_waiter_calls_count [L,QSA]
+
+# Real-time Events API (SSE)
+RewriteRule ^api/events/stream$ app/controllers/events.php [L,QSA]
+
+# Customer API - for menu and ordering
+RewriteRule ^api/customer/device-lock$ index.php?req=api&action=check_device_lock [L,QSA]
+RewriteRule ^api/customer/active-orders$ index.php?req=api&action=get_active_orders [L,QSA]
+RewriteRule ^api/customer/request-bill$ index.php?req=api&action=request_bill [L,QSA]
+RewriteRule ^api/customer/call-waiter$ index.php?req=api&action=call_waiter [L,QSA]
+RewriteRule ^api/customer/order$ index.php?req=api&action=create_order [L,QSA]
+RewriteRule ^api/customer/cancel-order$ index.php?req=api&action=customer_cancel_order [L,QSA]
+
+# Generic API fallback (legacy support - will be deprecated)
+RewriteRule ^api/([a-z_]+)$ index.php?req=api&action=$1 [L,QSA]
+
+# ============================================
+# SECURITY RULES
+# ============================================
+
+# Block direct PHP file access (force routing through index.php)
+RewriteCond %{REQUEST_URI} !^/restaurant/index\.php$
+RewriteCond %{REQUEST_URI} \.php$
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^(.*)$ - [F,L]
+
+# Prevent SQL injection attempts in URLs (but allow legitimate API actions)
+# Block SQL keywords when followed by common SQL syntax patterns
+RewriteCond %{QUERY_STRING} (union.*select|select.*from|insert.*into|drop.*table|delete.*from|update.*set|exec.*\(|declare.*@) [NC]
+RewriteRule ^(.*)$ - [F,L]
+
+# Block common exploit attempts
+RewriteCond %{QUERY_STRING} (\<|%3C).*script.*(\>|%3E) [NC,OR]
+RewriteCond %{QUERY_STRING} GLOBALS(=|\[|\%[0-9A-Z]{0,2}) [OR]
+RewriteCond %{QUERY_STRING} _REQUEST(=|\[|\%[0-9A-Z]{0,2})
+RewriteRule ^(.*)$ - [F,L]
+
+# Default route - must be last
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [QSA,L]
+
+# Protect sensitive files (double protection)
+<FilesMatch "\.(htaccess|htpasswd|env|git|sql|log|ini|config)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+

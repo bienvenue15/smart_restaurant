@@ -1,0 +1,495 @@
+<!-- Announcement Banner Component -->
+<div id="announcementContainer" class="announcement-container"></div>
+
+<style>
+.announcement-container {
+    position: fixed;
+    top: 70px;
+    left: 0;
+    right: 0;
+    z-index: 999;
+    padding: 0 20px;
+    pointer-events: none;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* Desktop - account for sidebar */
+@media (min-width: 992px) {
+    body:not(.sidebar-collapsed) .announcement-container {
+        left: 250px;
+    }
+    
+    body.sidebar-collapsed .announcement-container {
+        left: 0;
+    }
+}
+
+/* Tablet and below - full width */
+@media (max-width: 991px) {
+    .announcement-container {
+        left: 0 !important;
+        right: 0 !important;
+    }
+}
+
+.announcement-banner {
+    background: white;
+    border-radius: 12px;
+    padding: 15px 20px;
+    margin-bottom: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: start;
+    gap: 15px;
+    animation: slideDown 0.4s ease-out;
+    pointer-events: auto;
+    border-left: 5px solid;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+    word-wrap: break-word;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.announcement-banner.hiding {
+    animation: slideUp 0.3s ease-in forwards;
+}
+
+@keyframes slideUp {
+    to {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+}
+
+.announcement-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.announcement-content {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.announcement-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: #1f2937;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.announcement-message {
+    font-size: 14px;
+    line-height: 1.5;
+    color: #4b5563;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.announcement-dismiss {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 5px;
+    line-height: 1;
+    flex-shrink: 0;
+    transition: color 0.2s;
+}
+
+.announcement-dismiss:hover {
+    color: #1f2937;
+}
+
+.announcement-meta {
+    font-size: 12px;
+    color: #9ca3af;
+    margin-top: 8px;
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.announcement-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+/* Type-specific styles */
+.announcement-banner.type-info {
+    border-left-color: #3b82f6;
+}
+
+.announcement-banner.type-info .announcement-icon {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.announcement-banner.type-warning {
+    border-left-color: #f59e0b;
+}
+
+.announcement-banner.type-warning .announcement-icon {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.announcement-banner.type-success {
+    border-left-color: #10b981;
+}
+
+.announcement-banner.type-success .announcement-icon {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.announcement-banner.type-danger {
+    border-left-color: #ef4444;
+}
+
+.announcement-banner.type-danger .announcement-icon {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.announcement-banner.type-promotion {
+    border-left-color: #8b5cf6;
+}
+
+.announcement-banner.type-promotion .announcement-icon {
+    background: #f3e8ff;
+    color: #6b21a8;
+}
+
+/* Priority badges */
+.priority-urgent {
+    background: #fecaca;
+    color: #991b1b;
+}
+
+.priority-high {
+    background: #fed7aa;
+    color: #9a3412;
+}
+
+.priority-normal {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.priority-low {
+    background: #e5e7eb;
+    color: #6b7280;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+    .announcement-container {
+        left: 0 !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .announcement-container {
+        top: 60px;
+        padding: 0 10px;
+        left: 0 !important;
+    }
+    
+    .announcement-banner {
+        padding: 12px 15px;
+        border-radius: 8px;
+    }
+    
+    .announcement-icon {
+        font-size: 20px;
+        width: 35px;
+        height: 35px;
+    }
+    
+    .announcement-title {
+        font-size: 14px;
+    }
+    
+    .announcement-message {
+        font-size: 13px;
+    }
+    
+    .announcement-meta {
+        font-size: 11px;
+        gap: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .announcement-container {
+        padding: 0 8px;
+    }
+    
+    .announcement-banner {
+        padding: 10px 12px;
+        gap: 8px;
+        border-radius: 6px;
+    }
+    
+    .announcement-icon {
+        font-size: 18px;
+        width: 30px;
+        height: 30px;
+    }
+    
+    .announcement-title {
+        font-size: 13px;
+        padding-right: 20px;
+    }
+    
+    .announcement-message {
+        font-size: 12px;
+        line-height: 1.4;
+    }
+    
+    .announcement-dismiss {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        font-size: 18px;
+        padding: 2px;
+    }
+    
+    .announcement-meta {
+        font-size: 10px;
+    }
+}
+
+@media (max-width: 360px) {
+    .announcement-banner {
+        padding: 8px 10px;
+    }
+}
+</style>
+
+<script>
+(function() {
+    const ANNOUNCEMENT_STORAGE_KEY = 'dismissedAnnouncements';
+    let announcements = [];
+    
+    // Icon mapping
+    const iconMap = {
+        info: '<i class="fas fa-info-circle"></i>',
+        warning: '<i class="fas fa-exclamation-triangle"></i>',
+        success: '<i class="fas fa-check-circle"></i>',
+        danger: '<i class="fas fa-exclamation-circle"></i>',
+        promotion: '<i class="fas fa-gift"></i>'
+    };
+    
+    // Load announcements on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        loadAnnouncements();
+    });
+    
+    async function loadAnnouncements() {
+        try {
+            // Get current user and restaurant from session
+            <?php
+            if (session_status() === PHP_SESSION_NONE) {
+                session_start();
+            }
+            // Staff portal uses $_SESSION['staff_user'] structure
+            $restaurantId = isset($_SESSION['staff_user']['restaurant_id']) ? (int)$_SESSION['staff_user']['restaurant_id'] : 0;
+            $userId = isset($_SESSION['staff_user']['id']) ? (int)$_SESSION['staff_user']['id'] : 0;
+            $userRole = isset($_SESSION['staff_user']['role']) ? $_SESSION['staff_user']['role'] : '';
+            ?>
+            const restaurantId = <?php echo $restaurantId; ?>;
+            const userId = <?php echo $userId; ?>;
+            const userRole = '<?php echo $userRole; ?>';
+            
+            if (!restaurantId || !userId) {
+                console.log('[Announcements] No session data available', {restaurantId, userId, userRole});
+                console.log('[Announcements] Session check:', {
+                    hasStaffUser: <?php echo isset($_SESSION['staff_user']) ? 'true' : 'false'; ?>,
+                    isLoggedIn: <?php echo isset($_SESSION['staff_logged_in']) ? 'true' : 'false'; ?>
+                });
+                return;
+            }
+            
+            // Determine target audience based on role
+            let audience = 'staff'; // Default for staff portal
+            if (userRole === 'admin' || userRole === 'manager') {
+                audience = 'admins';
+            }
+            
+            const apiUrl = `<?php echo defined('BASE_URL') ? BASE_URL : '/restaurant'; ?>/app/controllers/api.php?action=get_announcements&restaurant_id=${restaurantId}&user_id=${userId}&audience=${audience}`;
+            console.log('[Announcements] Fetching from:', apiUrl);
+            
+            const response = await fetch(apiUrl);
+            
+            if (!response.ok) {
+                console.error('[Announcements] HTTP error:', response.status, response.statusText);
+                return;
+            }
+            
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                console.error('[Announcements] Non-JSON response:', text.substring(0, 200));
+                return;
+            }
+            
+            const result = await response.json();
+            console.log('[Announcements] Response:', result);
+            
+            if (result.status === 'OK' && result.data && result.data.length > 0) {
+                announcements = result.data;
+                console.log('[Announcements] Displaying', announcements.length, 'announcements');
+                displayAnnouncements();
+            } else {
+                console.log('[Announcements] No announcements to display:', result);
+            }
+        } catch (error) {
+            console.error('[Announcements] Error loading:', error);
+        }
+    }
+    
+    function displayAnnouncements() {
+        const container = document.getElementById('announcementContainer');
+        if (!container) return;
+        
+        // Get dismissed announcements from localStorage
+        const dismissed = getDismissedAnnouncements();
+        
+        // Filter out dismissed announcements
+        const visibleAnnouncements = announcements.filter(a => !dismissed.includes(a.id));
+        
+        if (visibleAnnouncements.length === 0) return;
+        
+        // Display announcements with stagger
+        visibleAnnouncements.forEach((announcement, index) => {
+            setTimeout(() => {
+                displayAnnouncement(announcement);
+            }, index * 200);
+        });
+    }
+    
+    function displayAnnouncement(announcement) {
+        const container = document.getElementById('announcementContainer');
+        
+        const banner = document.createElement('div');
+        banner.className = `announcement-banner type-${announcement.type}`;
+        banner.dataset.id = announcement.id;
+        
+        const icon = iconMap[announcement.type] || '<i class="fas fa-info-circle"></i>';
+        
+        let metaHtml = '';
+        if (announcement.priority !== 'normal') {
+            metaHtml += `<span class="announcement-badge priority-${announcement.priority}">${announcement.priority}</span>`;
+        }
+        if (announcement.end_date) {
+            const endDate = new Date(announcement.end_date);
+            metaHtml += `<span>Valid until: ${endDate.toLocaleDateString()}</span>`;
+        }
+        
+        banner.innerHTML = `
+            <div class="announcement-icon">${icon}</div>
+            <div class="announcement-content">
+                <div class="announcement-title">${escapeHtml(announcement.title)}</div>
+                <div class="announcement-message">${escapeHtml(announcement.message)}</div>
+                ${metaHtml ? `<div class="announcement-meta">${metaHtml}</div>` : ''}
+            </div>
+            ${announcement.is_dismissible ? `<button class="announcement-dismiss" onclick="dismissAnnouncement(${announcement.id}, this)" title="Dismiss">&times;</button>` : ''}
+        `;
+        
+        container.appendChild(banner);
+        
+        // Auto-dismiss after 10 seconds for low priority non-sticky announcements
+        if (announcement.is_dismissible && announcement.priority === 'low') {
+            setTimeout(() => {
+                dismissAnnouncement(announcement.id, banner.querySelector('.announcement-dismiss'));
+            }, 10000);
+        }
+    }
+    
+    window.dismissAnnouncement = async function(announcementId, button) {
+        const banner = button ? button.closest('.announcement-banner') : document.querySelector(`[data-id="${announcementId}"]`);
+        if (!banner) return;
+        
+        // Animate out
+        banner.classList.add('hiding');
+        
+        setTimeout(() => {
+            banner.remove();
+        }, 300);
+        
+        // Save dismissal locally
+        saveDismissedAnnouncement(announcementId);
+        
+        // Send to server
+        try {
+            const userId = <?php echo $userId; ?>;
+            await fetch('<?php echo defined('BASE_URL') ? BASE_URL : '/restaurant'; ?>/app/controllers/api.php?action=dismiss_announcement', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    announcement_id: announcementId,
+                    user_id: userId
+                })
+            });
+        } catch (error) {
+            console.error('[Announcements] Error dismissing:', error);
+        }
+    };
+    
+    function getDismissedAnnouncements() {
+        try {
+            const stored = localStorage.getItem(ANNOUNCEMENT_STORAGE_KEY);
+            return stored ? JSON.parse(stored) : [];
+        } catch {
+            return [];
+        }
+    }
+    
+    function saveDismissedAnnouncement(id) {
+        try {
+            const dismissed = getDismissedAnnouncements();
+            if (!dismissed.includes(id)) {
+                dismissed.push(id);
+                localStorage.setItem(ANNOUNCEMENT_STORAGE_KEY, JSON.stringify(dismissed));
+            }
+        } catch (error) {
+            console.error('[Announcements] Error saving dismissal:', error);
+        }
+    }
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+})();
+</script>

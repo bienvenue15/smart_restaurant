@@ -40,37 +40,40 @@
 - [ ] Initial migration (`prisma migrate dev`) — **not yet run**, no local PostgreSQL server was confirmed available in this environment
 - [ ] Legacy MySQL → PostgreSQL data migration script (data-cleaning steps per DATABASE_MIGRATION_PLAN.md §"Data-cleaning steps") — not started; this needs a real legacy database connection to run against, not just the schema dump
 
-## Phase 3 — Backend (in progress)
+## Phase 3 — Backend (core modules complete, a few peripheral ones remain)
 
 - [x] Auth module (JWT access/refresh for staff; signed session token helper for anonymous customer sessions)
 - [x] RBAC middleware (`requirePermission`/`requireAnyPermission`, DB-backed, single mechanism replacing the legacy's three overlapping ones)
 - [x] Shift-gating middleware (`requireActiveShift`, separate from RBAC per design decision, fixes the legacy midnight-rollover bug)
 - [x] Tenant identity middleware (`requireStaffAuth`/`requireCustomerSession` — restaurantId comes only from the verified token, never a request param)
 - [x] Menu module (categories, items, availability toggle)
-- [x] Orders module — create (server-authoritative pricing, fixes legacy Critical #2), cancel (60s window), status transitions (explicit state machine), item status (kitchen/waiter), payment recording (amount reconciliation, fixes legacy Critical #3)
+- [x] Customer session module (`POST /customer/session/scan` — the actual QR-scan entry point; signed session token as the real security boundary, device fingerprint demoted to a secondary signal, fixes legacy High #9)
+- [x] Orders module — create (server-authoritative pricing, fixes legacy Critical #2), cancel (60s window), status transitions (explicit state machine), item status (kitchen/waiter), payment recording (amount reconciliation, fixes legacy Critical #3), role-scoped listing (`GET /staff/orders`, `GET /staff/orders/:id`)
 - [x] Liability module — single consolidated auto-creation/clear/waive/abandoned-detection service (fixes the legacy's two divergent implementations)
-- [ ] Restaurants module (tenant CRUD, onboarding, settings)
-- [ ] Staff module (CRUD, shift clock-in/out endpoints)
-- [ ] Tables module (CRUD, QR issuance)
-- [ ] Kitchen-specific endpoints beyond item-status (availability toggle already done; delay-escalation notifications not started)
-- [ ] Waiter-calls module
-- [ ] Cash session module
-- [ ] Reports module
-- [ ] Subscriptions module (limits/enforcement middleware)
-- [ ] Announcements, support ticket modules
-- [ ] Admin (superadmin) module
+- [x] Restaurants module (self-service registration + settings; single consolidated onboarding service, fixes legacy's duplicated register.php/superadmin.php logic)
+- [x] Staff module (CRUD, shift clock-in/out endpoints, reimplements the legacy's MySQL-trigger-only "no delete with open cash session" guard)
+- [x] Tables module (CRUD, QR issuance using an opaque unguessable token instead of the legacy's structured/guessable pattern, reset, regenerate-QR)
+- [x] Waiter-calls module (race-safe first-accept-wins)
+- [x] Cash session module (open/close/reconcile, 1,000 RWF discrepancy threshold)
+- [x] Reports module (the real per-restaurant KPI surface — dashboard stats, sales report, top items — distinct from legacy's cross-tenant Stats.php)
+- [x] Subscriptions module (live plan-limit enforcement wired into order/menu-item/table/staff creation; no payment gateway, matching legacy business reality)
+- [x] Admin (superadmin) module (restaurant CRUD, platform users, subscription plans, platform stats — single DB-role check, no hardcoded backdoor, fixes legacy High #7)
+- [ ] Kitchen delay-escalation notifications (5/10-min tiers) — not started
+- [ ] Announcements, support ticket modules — not started
+- [ ] Staff-side notifications endpoint (bell icon) — not started
 
 ## Phase 4 — Frontend (started)
 - [x] Project structure, Tailwind, i18n scaffolded
 - [x] Staff login page — wired end-to-end to the real backend auth API (not a mock)
 - [x] `useApi`/`useAuthStore` composables (in-memory access token, no localStorage — see TARGET_ARCHITECTURE)
 - [x] `staff-auth` route middleware guard
-- [ ] Customer QR ordering flow — placeholder page only (`/menu/[qr]`)
-- [ ] Staff portal (role-aware dashboard) — placeholder page only
-- [ ] Kitchen display
-- [ ] Waiter interface
+- [x] Customer QR ordering flow — real implementation: QR scan → menu → cart (localStorage-persisted per table, a deliberate improvement over legacy's non-persistent cart) → place order (never sends price)
+- [x] Staff dashboard — real KPI tiles + working clock-in/clock-out
+- [x] Staff orders board — status transitions limited to exactly what the backend state machine accepts
+- [x] Kitchen display — item-level prep queue with elapsed-time display
+- [ ] Waiter interface (dedicated waiter-calls/table view — waiter can currently use the general orders board, but no dedicated waiter-calls UI yet)
 - [ ] Admin/superadmin console
-- [ ] Shared UI component library (only `BaseButton` exists so far)
+- [ ] Shared UI component library (only `BaseButton` exists so far; menu/cart/order components exist per-domain)
 
 ## Phase 5 — Integration
 - [ ] Nuxt ↔ Express ↔ Prisma ↔ PostgreSQL end-to-end wiring

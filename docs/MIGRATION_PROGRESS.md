@@ -61,21 +61,32 @@
 - [x] Reports module (the real per-restaurant KPI surface — dashboard stats, sales report, top items — distinct from legacy's cross-tenant Stats.php)
 - [x] Subscriptions module (live plan-limit enforcement wired into order/menu-item/table/staff creation; no payment gateway, matching legacy business reality)
 - [x] Admin (superadmin) module (restaurant CRUD, platform users, subscription plans, platform stats — single DB-role check, no hardcoded backdoor, fixes legacy High #7)
+- [x] Liability management routes (list/waive/mark-loss/stats — the auto-create/clear engine existed, staff had no way to act on one)
+- [x] Notifications module (list/mark-read/mark-all-read), wired into the real trigger points: kitchen notified on order CONFIRMED (not creation — matches legacy's explicit intent), managers notified on waiter calls and menu availability toggles
+- [x] Activity log module (merges `StaffActivityLog` + `AuditTrail`)
+- [x] Adjustments module — two-person approval workflow for discounts/refunds (auto-approved within a staff member's own limit/permission, otherwise queued for manager approval)
+- [x] Seeded platform superadmin bootstrap account (env-configurable credentials, always seeded — without it there's no way to reach the admin console on a fresh deploy)
 - [ ] Kitchen delay-escalation notifications (5/10-min tiers) — not started
 - [ ] Announcements, support ticket modules — not started
-- [ ] Staff-side notifications endpoint (bell icon) — not started
+- [ ] File uploads (menu images), email sending — not started
 
-## Phase 4 — Frontend (started)
+## Phase 4 — Frontend (core surfaces complete)
 - [x] Project structure, Tailwind, i18n scaffolded
-- [x] Staff login page — wired end-to-end to the real backend auth API (not a mock)
+- [x] Staff login page — wired end-to-end to the real backend auth API, redirects by role (staff vs superadmin)
 - [x] `useApi`/`useAuthStore` composables (in-memory access token, no localStorage — see TARGET_ARCHITECTURE)
-- [x] `staff-auth` route middleware guard
+- [x] `staff-auth`/`admin-auth` route middleware guards
 - [x] Customer QR ordering flow — real implementation: QR scan → menu → cart (localStorage-persisted per table, a deliberate improvement over legacy's non-persistent cart) → place order (never sends price)
 - [x] Staff dashboard — real KPI tiles + working clock-in/clock-out
 - [x] Staff orders board — status transitions limited to exactly what the backend state machine accepts
 - [x] Kitchen display — item-level prep queue with elapsed-time display
-- [ ] Waiter interface (dedicated waiter-calls/table view — waiter can currently use the general orders board, but no dedicated waiter-calls UI yet)
-- [ ] Admin/superadmin console
+- [x] Staff layout with sidebar navigation across all staff pages
+- [x] Tables management (create/reset/delete, copy customer menu link)
+- [x] Menu management (categories/items CRUD, availability toggle)
+- [x] Team management (staff CRUD with role assignment)
+- [x] Waiter-calls page (accept/complete queue)
+- [x] Cash session page (open/close, running balance, transaction list)
+- [x] Superadmin console — dashboard, restaurant onboarding (temp password shown once, never emailed), platform users list, subscription plans
+- [ ] Liability management, activity log, notifications bell, approval-queue — backend ready, no frontend page yet
 - [ ] Shared UI component library (only `BaseButton` exists so far; menu/cart/order components exist per-domain)
 
 ## Phase 5 — Integration

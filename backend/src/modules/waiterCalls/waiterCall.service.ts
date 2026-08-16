@@ -1,9 +1,21 @@
 import { WaiterCallPriority, WaiterCallRequestType, WaiterCallStatus } from '@prisma/client';
 import { prisma } from '@/config/prisma';
 import { Conflict, NotFound } from '@/utils/httpError';
+import { notifyRoles } from '@/modules/notifications/notification.service';
 
 export async function createCall(restaurantId: string, tableId: string, requestType: WaiterCallRequestType, message: string | undefined, priority: WaiterCallPriority) {
-  return prisma.waiterCall.create({ data: { restaurantId, tableId, requestType, message, priority } });
+  const call = await prisma.waiterCall.create({ data: { restaurantId, tableId, requestType, message, priority } });
+
+  const table = await prisma.restaurantTable.findUnique({ where: { id: tableId } });
+  await notifyRoles(
+    restaurantId,
+    ['WAITER', 'MANAGER', 'ADMIN'],
+    'waiter_call',
+    'Waiter call',
+    `Table ${table?.tableNumber ?? '?'} requested ${requestType.toLowerCase()}`,
+  );
+
+  return call;
 }
 
 export async function listCalls(restaurantId: string, status?: WaiterCallStatus) {

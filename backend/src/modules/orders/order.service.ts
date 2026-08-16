@@ -3,6 +3,7 @@ import { prisma } from '@/config/prisma';
 import { BadRequest, Conflict, NotFound } from '@/utils/httpError';
 import * as liabilityService from '@/modules/liability/liability.service';
 import { LIMIT_CHECKERS } from '@/modules/subscriptions/subscription.service';
+import { notifyRoles } from '@/modules/notifications/notification.service';
 import { canCancelOrder, deriveOrderStatusFromItems, waiterAllowedOrderTransitions } from './order.state';
 
 interface CreateOrderItemInput {
@@ -134,7 +135,7 @@ export async function cancelOrder(restaurantId: string, orderId: string) {
 
 /** Waiter-driven order-level transition, gated by the transition table in order.state.ts. */
 export async function updateOrderStatus(restaurantId: string, orderId: string, newStatus: OrderStatus, staffId: string) {
-  return prisma.$transaction(async (tx) => {
+  const updated = await prisma.$transaction(async (tx) => {
     const order = await tx.order.findFirst({ where: { id: orderId, restaurantId } });
     if (!order) throw NotFound('Order not found');
 
@@ -149,10 +150,20 @@ export async function updateOrderStatus(restaurantId: string, orderId: string, n
       data.confirmedAt = new Date();
     }
 
-    const updated = await tx.order.update({ where: { id: orderId }, data });
+    const result = await tx.order.update({ where: { id: orderId }, data });
     await liabilityService.evaluateOnStatusChange(tx, orderId, newStatus);
-    return updated;
+    return result;
   });
+
+  // Kitchen is only notified once a waiter confirms an order, never on raw
+  // creation — preserves the legacy's explicit design intent
+  // (docs/CURRENT_SYSTEM_AUDIT.md §"Order lifecycle": "Kitchen will be
+  // notified when order is confirmed by waiter, not on initial creation").
+  if (newStatus === OrderStatus.CONFIRMED) {
+    await notifyRoles(restaurantId, ['KITCHEN', 'MANAGER', 'ADMIN'], 'new_order', 'New order confirmed', `Order ${updated.orderNumber} is ready to prepare`);
+  }
+
+  return updated;
 }
 
 /** Kitchen/waiter item-level status update, which then re-derives the parent order's aggregate status. */

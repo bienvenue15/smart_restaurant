@@ -17,6 +17,10 @@ import { customerWaiterCallRouter, staffWaiterCallRouter } from '@/modules/waite
 import { cashRouter } from '@/modules/cash/cash.routes';
 import { reportRouter } from '@/modules/reports/report.routes';
 import { adminRouter } from '@/modules/admin/admin.routes';
+import { liabilityRouter } from '@/modules/liability/liability.routes';
+import { notificationRouter } from '@/modules/notifications/notification.routes';
+import { activityLogRouter } from '@/modules/activityLog/activityLog.routes';
+import { adjustmentRouter } from '@/modules/adjustments/adjustment.routes';
 
 export function createApp() {
   const app = express();
@@ -52,6 +56,10 @@ export function createApp() {
   app.use('/api/v1/staff/cash', cashRouter);
   app.use('/api/v1/staff/reports', reportRouter);
   app.use('/api/v1/admin', adminRouter);
+  app.use('/api/v1/staff/liabilities', liabilityRouter);
+  app.use('/api/v1/staff/notifications', notificationRouter);
+  app.use('/api/v1/staff/activity-log', activityLogRouter);
+  app.use('/api/v1/staff/adjustments', adjustmentRouter);
 
   app.use((_req, res) => {
     res.status(404).json({ status: 'FAIL', code: 'NOT_FOUND', message: 'Endpoint not found' });

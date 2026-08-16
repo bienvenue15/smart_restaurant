@@ -1,6 +1,7 @@
 import { prisma } from '@/config/prisma';
 import { NotFound } from '@/utils/httpError';
 import { LIMIT_CHECKERS } from '@/modules/subscriptions/subscription.service';
+import { notifyRoles } from '@/modules/notifications/notification.service';
 
 export async function getFullMenu(restaurantId: string) {
   return prisma.menuCategory.findMany({
@@ -58,5 +59,15 @@ export async function updateMenuItem(restaurantId: string, itemId: string, data:
 export async function setAvailability(restaurantId: string, itemId: string, isAvailable: boolean) {
   const item = await prisma.menuItem.findFirst({ where: { id: itemId, restaurantId } });
   if (!item) throw NotFound('Menu item not found');
-  return prisma.menuItem.update({ where: { id: itemId }, data: { isAvailable } });
+  const updated = await prisma.menuItem.update({ where: { id: itemId }, data: { isAvailable } });
+
+  await notifyRoles(
+    restaurantId,
+    ['MANAGER', 'ADMIN'],
+    'menu_availability',
+    'Menu availability changed',
+    `${item.name} is now ${isAvailable ? 'available' : 'unavailable'}`,
+  );
+
+  return updated;
 }

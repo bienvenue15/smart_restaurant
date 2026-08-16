@@ -102,6 +102,53 @@ export async function waiveLiability(liabilityId: string, waivedById: string, re
   });
 }
 
+export async function markAsLoss(liabilityId: string, markedById: string, reason: string) {
+  return prisma.$transaction(async (tx) => {
+    const liability = await tx.waiterLiability.findUniqueOrThrow({ where: { id: liabilityId } });
+
+    await tx.waiterLiability.update({ where: { id: liabilityId }, data: { status: 'LOSS', notes: reason } });
+
+    await tx.auditTrail.create({
+      data: {
+        restaurantId: liability.restaurantId,
+        staffId: markedById,
+        actionType: 'mark_liability_loss',
+        tableName: 'waiter_liabilities',
+        recordId: liabilityId,
+        reason,
+      },
+    });
+  });
+}
+
+/** Own liabilities (any staff member can see their own) or, for admin/manager, everyone's. */
+export async function listLiabilities(restaurantId: string, staffId: string, role: string, status?: string) {
+  const where: Record<string, unknown> = { restaurantId };
+  if (status) where.status = status;
+  if (role !== 'ADMIN' && role !== 'MANAGER') where.waiterId = staffId;
+
+  return prisma.waiterLiability.findMany({
+    where,
+    include: {
+      waiter: { select: { fullName: true } },
+      order: { select: { orderNumber: true, tableId: true } },
+    },
+    orderBy: { liabilityCreatedAt: 'desc' },
+    take: 100,
+  });
+}
+
+export async function getStats(restaurantId: string) {
+  const grouped = await prisma.waiterLiability.groupBy({
+    by: ['status'],
+    where: { restaurantId },
+    _sum: { orderAmount: true },
+    _count: true,
+  });
+
+  return grouped.map((g) => ({ status: g.status, count: g._count, totalAmount: Number(g._sum.orderAmount ?? 0) }));
+}
+
 /** 120-minute abandoned-order auto-loss window, preserved from legacy. */
 export const ABANDONED_ORDER_TIMEOUT_MINUTES = 120;
 

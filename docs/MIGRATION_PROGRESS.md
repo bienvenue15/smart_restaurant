@@ -33,11 +33,14 @@
 
 **Build verification performed (not just "it typechecks"):** backend `tsc` compiles cleanly, but the initial build was actually broken — path-alias (`@/...`) imports aren't rewritten by plain `tsc`, so `node dist/index.js` failed with `MODULE_NOT_FOUND` until `tsc-alias` was added as a post-build step. Caught by actually running the compiled server and hitting `/health`, not just by type-checking. Frontend `nuxi typecheck` and `npm run build` both pass cleanly.
 
-## Phase 2 — Database ✅ Schema complete, migration script pending
+## Phase 2 — Database ✅ Schema + initial migration complete and verified against a real database
 
-- [x] `prisma/schema.prisma` — all 32 legacy tables modeled with UUID PKs and real FKs, per DATABASE_MIGRATION_PLAN.md. Validated with `prisma validate` and `prisma generate`.
+- [x] `prisma/schema.prisma` — all 31 legacy tables modeled with UUID PKs and real FKs, per DATABASE_MIGRATION_PLAN.md. Validated with `prisma validate` and `prisma generate`.
 - [x] Seed script (`prisma/seed/`) — permission catalogue + role grants (grounded in audited legacy role capabilities), subscription plans, optional demo restaurant (`SEED_DEMO_DATA=true`)
-- [ ] Initial migration (`prisma migrate dev`) — **not yet run**, no local PostgreSQL server was confirmed available in this environment
+- [x] Fixed a real schema bug: only FK columns had `@map(snake_case)` — ~160 other scalar columns (`isActive`, `createdAt`, etc.) were left as unmapped camelCase, inconsistent with the rest of the schema. Fixed programmatically (diffed before applying), required a dev-database reset (explicit user consent obtained — Prisma itself blocks an agent from running `migrate reset` without it).
+- [x] Initial migration (`prisma migrate dev`) — **run and applied** against a real local PostgreSQL 16 server (`smartresto` database). All 31 tables + FKs + indexes confirmed via `\dt`/`\d` in psql.
+- [x] Seed data verified in the real database: 26 permissions, 92 role-permission grants, 4 subscription plans.
+- [x] **Full order lifecycle verified end-to-end against the real database via the actual HTTP API** (not mocked): registered a restaurant, logged in, created a table and menu item, scanned the QR to get a signed customer session, placed an order with a **forged price of 1 RWF** (server correctly computed the real total of 7,000 RWF from the menu item's actual price — Critical #2 fix confirmed with real data, not just unit-tested), confirmed the shift-gating middleware correctly blocked order confirmation until clocking in, clocked in, confirmed the order, recorded payment, confirmed the table was released back to `AVAILABLE`, confirmed dashboard stats correctly reflected the completed order.
 - [ ] Legacy MySQL → PostgreSQL data migration script (data-cleaning steps per DATABASE_MIGRATION_PLAN.md §"Data-cleaning steps") — not started; this needs a real legacy database connection to run against, not just the schema dump
 
 ## Phase 3 — Backend (core modules complete, a few peripheral ones remain)
@@ -99,7 +102,7 @@
 
 ## Environment notes (this workspace)
 
-- Node 24.18.1, npm 11.16.0, PostgreSQL client 16.14 available locally.
+- Node 24.18.1, npm 11.16.0, a local PostgreSQL 16 server (Windows service `postgresql-x64-16`) all available.
 - **Docker is not installed/available in this environment** — Docker configs are written but `docker compose up` has not been verified locally; needs to be run in an environment with Docker, or by the user.
-- No local PostgreSQL server was confirmed running — `prisma migrate dev` has not been run yet. Next session should start there: bring up Postgres (locally or via `docker compose up postgres`), run the migration, then `npm run prisma:seed`.
-- Port 4000 is already in use by an unrelated pre-existing service on this machine (confirmed while smoke-testing the backend build) — local dev of the new backend should use a different `PORT` (e.g. 4001) via `.env`, or that port should be freed first.
+- Local PostgreSQL is set up and working: database `smartresto`, migrated and seeded (see Phase 2 above). Connection string lives in `backend/.env` (gitignored, not in this doc for the same reason).
+- Port 4000 was intermittently occupied by an unrelated service on this machine during earlier smoke tests — as of the last verification pass it was free and the backend ran on it without conflict, but if it recurs, use a different `PORT` via `.env`.

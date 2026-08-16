@@ -17,7 +17,11 @@ async function handleSubmit() {
       { username: username.value, password: password.value },
     );
     auth.setSession(result.accessToken, result.staff);
-    await router.push('/staff/dashboard');
+    // Same login endpoint for every staff role, including the platform
+    // superadmin (docs/CURRENT_SYSTEM_AUDIT.md notes the legacy app split
+    // this into two entirely separate login screens/session namespaces for
+    // no functional reason - one endpoint, role-based redirect is simpler).
+    await router.push(result.staff.role === 'SUPER_ADMIN' ? '/admin/dashboard' : '/staff/dashboard');
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Login failed';
   } finally {

@@ -87,9 +87,34 @@ async function seedDemoRestaurant() {
   });
 }
 
+/**
+ * Bootstraps the one platform-level SUPER_ADMIN account. Unlike the demo
+ * restaurant, this always runs (not gated behind SEED_DEMO_DATA) - without
+ * it there is no way to reach the superadmin console at all on a fresh
+ * deployment. Credentials come from env vars with dev-only fallback
+ * defaults; the legacy app's equivalent bootstrap risk was a hardcoded
+ * fallback EMAIL that bypassed the real auth check entirely
+ * (docs/SECURITY_AUDIT.md #7) - this is a normal password-checked account,
+ * just with a default password that must be rotated in any real deployment.
+ */
+async function seedSuperAdmin() {
+  const username = process.env.SUPERADMIN_USERNAME ?? 'superadmin';
+  const existing = await prisma.staffUser.findUnique({ where: { username } });
+  if (existing) return;
+
+  const password = process.env.SUPERADMIN_PASSWORD ?? 'ChangeMe123!';
+  const passwordHash = await bcrypt.hash(password, 10);
+  await prisma.staffUser.create({
+    data: { username, passwordHash, fullName: 'Platform Superadmin', role: 'SUPER_ADMIN', restaurantId: null },
+  });
+  // eslint-disable-next-line no-console
+  console.log(`Seeded superadmin account "${username}" - rotate SUPERADMIN_PASSWORD before any real deployment.`);
+}
+
 async function main() {
   await seedPermissions();
   await seedSubscriptionPlans();
+  await seedSuperAdmin();
   if (process.env.SEED_DEMO_DATA === 'true') {
     await seedDemoRestaurant();
   }

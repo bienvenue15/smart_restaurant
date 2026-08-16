@@ -2,6 +2,7 @@ import { OrderItemStatus, OrderStatus, PaymentMethod, PaymentStatus } from '@pri
 import { prisma } from '@/config/prisma';
 import { BadRequest, Conflict, NotFound } from '@/utils/httpError';
 import * as liabilityService from '@/modules/liability/liability.service';
+import { LIMIT_CHECKERS } from '@/modules/subscriptions/subscription.service';
 import { canCancelOrder, deriveOrderStatusFromItems, waiterAllowedOrderTransitions } from './order.state';
 
 interface CreateOrderItemInput {
@@ -20,6 +21,7 @@ interface CreateOrderItemInput {
  */
 export async function createOrder(restaurantId: string, tableId: string, items: CreateOrderItemInput[], specialInstructions?: string) {
   if (items.length === 0) throw BadRequest('Order must contain at least one item');
+  await LIMIT_CHECKERS.ordersPerMonth(restaurantId);
 
   return prisma.$transaction(async (tx) => {
     const menuItemIds = items.map((i) => i.menuItemId);

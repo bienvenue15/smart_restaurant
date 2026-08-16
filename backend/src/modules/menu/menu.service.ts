@@ -1,5 +1,6 @@
 import { prisma } from '@/config/prisma';
 import { NotFound } from '@/utils/httpError';
+import { LIMIT_CHECKERS } from '@/modules/subscriptions/subscription.service';
 
 export async function getFullMenu(restaurantId: string) {
   return prisma.menuCategory.findMany({
@@ -44,6 +45,7 @@ export async function createMenuItem(
 ) {
   const category = await prisma.menuCategory.findFirst({ where: { id: data.categoryId, restaurantId } });
   if (!category) throw NotFound('Category not found');
+  await LIMIT_CHECKERS.menuItems(restaurantId);
   return prisma.menuItem.create({ data: { ...data, restaurantId } });
 }
 

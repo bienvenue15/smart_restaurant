@@ -11,14 +11,16 @@ import {
   updateOrderStatusSchema,
 } from '@/validators/order.validators';
 import * as orderService from './order.service';
+import { extendLockOnActivity } from '@/modules/customerSession/customerSession.service';
 
 export const customerOrderRouter = Router();
 
 customerOrderRouter.post('/', requireCustomerSession, validate(createOrderSchema), async (req, res, next) => {
   try {
-    const { restaurantId, tableId } = req.customerSession!;
+    const { restaurantId, tableId, deviceTableLockId } = req.customerSession!;
     if (req.body.tableId !== tableId) throw BadRequest('Table mismatch for this session');
     const order = await orderService.createOrder(restaurantId, tableId, req.body.items, req.body.specialInstructions);
+    await extendLockOnActivity(deviceTableLockId);
     res.status(201).json({ status: 'OK', data: order });
   } catch (err) {
     next(err);

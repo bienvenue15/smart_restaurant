@@ -1,9 +1,12 @@
 import { Router } from 'express';
 import { requireCustomerSession, requireStaffAuth } from '@/middleware/auth';
 import { requirePermission } from '@/middleware/permission';
+import { uploadImage } from '@/middleware/upload';
 import { validate } from '@/middleware/validate';
+import { BadRequest } from '@/utils/httpError';
 import { createCategorySchema, createMenuItemSchema, updateCategorySchema, updateMenuItemSchema } from '@/validators/menu.validators';
 import * as menuService from './menu.service';
+import { saveMenuItemImage } from '@/modules/uploads/upload.service';
 
 export const publicMenuRouter = Router();
 
@@ -67,6 +70,17 @@ staffMenuRouter.post('/items', requirePermission('manage_menu'), validate(create
 staffMenuRouter.patch('/items/:id', requirePermission('manage_menu'), validate(updateMenuItemSchema), async (req, res, next) => {
   try {
     const item = await menuService.updateMenuItem(req.staff!.restaurantId!, req.params.id!, req.body);
+    res.json({ status: 'OK', data: item });
+  } catch (err) {
+    next(err);
+  }
+});
+
+staffMenuRouter.post('/items/:id/image', requirePermission('manage_menu'), uploadImage, async (req, res, next) => {
+  try {
+    if (!req.file) throw BadRequest('No image file provided (field name: "image")');
+    const imageUrl = await saveMenuItemImage(req.staff!.restaurantId!, req.file.buffer);
+    const item = await menuService.setImageUrl(req.staff!.restaurantId!, req.params.id!, imageUrl);
     res.json({ status: 'OK', data: item });
   } catch (err) {
     next(err);

@@ -132,3 +132,7 @@ frontend/.nuxt/
 frontend/.output/
 backend/dist/
 *.tsbuildinfo
+
+# Uploaded menu images (local disk storage, not committed)
+backend/uploads/*
+!backend/uploads/.gitkeep

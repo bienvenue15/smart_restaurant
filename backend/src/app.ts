@@ -1,3 +1,4 @@
+import path from 'node:path';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -40,6 +41,18 @@ export function createApp() {
   app.use(pinoHttp({ logger }));
 
   app.get('/health', (_req, res) => res.json({ status: 'OK' }));
+
+  // Helmet's default Cross-Origin-Resource-Policy (same-origin) would
+  // otherwise block the frontend (a different origin in dev/prod) from
+  // rendering these images in <img> tags — relax it for this path only.
+  app.use(
+    '/uploads',
+    (_req, res, next) => {
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      next();
+    },
+    express.static(path.resolve(__dirname, '../uploads')),
+  );
 
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/restaurants', publicRestaurantRouter);

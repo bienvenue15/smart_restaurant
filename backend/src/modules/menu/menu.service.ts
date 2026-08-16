@@ -56,6 +56,12 @@ export async function updateMenuItem(restaurantId: string, itemId: string, data:
   return prisma.menuItem.update({ where: { id: itemId }, data });
 }
 
+export async function setImageUrl(restaurantId: string, itemId: string, imageUrl: string) {
+  const item = await prisma.menuItem.findFirst({ where: { id: itemId, restaurantId } });
+  if (!item) throw NotFound('Menu item not found');
+  return prisma.menuItem.update({ where: { id: itemId }, data: { imageUrl } });
+}
+
 export async function setAvailability(restaurantId: string, itemId: string, isAvailable: boolean) {
   const item = await prisma.menuItem.findFirst({ where: { id: itemId, restaurantId } });
   if (!item) throw NotFound('Menu item not found');

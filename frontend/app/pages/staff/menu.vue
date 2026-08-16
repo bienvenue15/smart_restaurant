@@ -68,6 +68,31 @@ async function toggleAvailability(itemId: string, isAvailable: boolean) {
   }
 }
 
+const uploadingItemId = ref<string | null>(null);
+
+async function handleImageChange(itemId: string, event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0];
+  if (!file) return;
+  uploadingItemId.value = itemId;
+  try {
+    await api.upload(`/staff/menu/items/${itemId}/image`, file);
+    await loadMenu();
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Failed to upload image';
+  } finally {
+    uploadingItemId.value = null;
+  }
+}
+
+const runtimeConfig = useRuntimeConfig();
+function imageSrc(imageUrl: string | null): string | null {
+  if (!imageUrl) return null;
+  // imageUrl is a backend-relative path (e.g. /uploads/menu/...) — resolve
+  // against the API origin, not the frontend's, since Express serves it.
+  const apiOrigin = new URL(runtimeConfig.public.apiBaseUrl).origin;
+  return `${apiOrigin}${imageUrl}`;
+}
+
 onMounted(loadMenu);
 </script>
 
@@ -95,10 +120,19 @@ onMounted(loadMenu);
 
         <ul class="mb-3 space-y-2">
           <li v-for="item in category.items" :key="item.id" class="flex items-center justify-between rounded border border-gray-100 p-2 text-sm">
-            <span>{{ item.name }} — {{ Number(item.price).toLocaleString() }}</span>
-            <BaseButton variant="secondary" @click="toggleAvailability(item.id, item.isAvailable)">
-              {{ item.isAvailable ? 'Mark unavailable' : 'Mark available' }}
-            </BaseButton>
+            <div class="flex items-center gap-2">
+              <img v-if="imageSrc(item.imageUrl)" :src="imageSrc(item.imageUrl)!" alt="" class="h-8 w-8 rounded object-cover" />
+              <span>{{ item.name }} — {{ Number(item.price).toLocaleString() }}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="cursor-pointer text-xs text-blue-600 hover:underline">
+                {{ uploadingItemId === item.id ? 'Uploading…' : 'Upload image' }}
+                <input type="file" accept="image/*" class="hidden" @change="handleImageChange(item.id, $event)" />
+              </label>
+              <BaseButton variant="secondary" @click="toggleAvailability(item.id, item.isAvailable)">
+                {{ item.isAvailable ? 'Mark unavailable' : 'Mark available' }}
+              </BaseButton>
+            </div>
           </li>
           <li v-if="category.items.length === 0" class="text-sm text-gray-400">No items yet.</li>
         </ul>

@@ -59,7 +59,10 @@ composer.lock
 node_modules/
 npm-debug.log
 yarn-error.log
-package-lock.json
+# NOTE: package-lock.json is intentionally NOT ignored for the new
+# frontend/ and backend/ stacks (docs/TARGET_ARCHITECTURE.md) — lockfiles
+# are committed there for reproducible installs. This blanket rule was
+# inherited from the legacy app, which never had a Node build step.
 
 # Build files
 dist/

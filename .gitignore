@@ -116,3 +116,6 @@ api_keys.php
 
 sessions/
 *.session
+
+# Claude Code harness state
+.claude/

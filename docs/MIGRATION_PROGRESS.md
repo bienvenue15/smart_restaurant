@@ -67,8 +67,9 @@
 - [x] Adjustments module — two-person approval workflow for discounts/refunds (auto-approved within a staff member's own limit/permission, otherwise queued for manager approval)
 - [x] Seeded platform superadmin bootstrap account (env-configurable credentials, always seeded — without it there's no way to reach the admin console on a fresh deploy)
 - [ ] Kitchen delay-escalation notifications (5/10-min tiers) — not started
+- [x] File uploads module — menu item images, magic-byte content sniffing (not client-reported type), verified against real DB (fake file rejected, real PNG accepted and served)
 - [ ] Announcements, support ticket modules — not started
-- [ ] File uploads (menu images), email sending — not started
+- [ ] Email sending — not started
 
 ## Phase 4 — Frontend (core surfaces complete)
 - [x] Project structure, Tailwind, i18n scaffolded
@@ -86,6 +87,7 @@
 - [x] Waiter-calls page (accept/complete queue)
 - [x] Cash session page (open/close, running balance, transaction list)
 - [x] Superadmin console — dashboard, restaurant onboarding (temp password shown once, never emailed), platform users list, subscription plans
+- [x] Menu image upload UI (thumbnail + upload control per item)
 - [ ] Liability management, activity log, notifications bell, approval-queue — backend ready, no frontend page yet
 - [ ] Shared UI component library (only `BaseButton` exists so far; menu/cart/order components exist per-domain)
 

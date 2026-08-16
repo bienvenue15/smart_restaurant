@@ -85,7 +85,7 @@ Updated 2026-08-16 (late Phase 3/4). Every feature was audited in Phase 0; this 
 | Multi-tenancy isolation | Backend implemented | Real FKs + JWT-derived tenant ID only (never a request param) — fixes legacy's confirmed cross-tenant leakage bugs; role-isolation additionally verified for the superadmin boundary specifically |
 | RBAC / permission system | Backend implemented | Single DB-backed mechanism replacing legacy's 3 overlapping ones; shift-gating verified end-to-end |
 | Email (transactional) | **Not built** | No mail service wired up in the new backend yet |
-| File uploads (menu images) | **Not built** | No upload endpoint yet |
+| File uploads (menu images) | Frontend implemented | Real magic-byte content sniffing (not client-reported type), verified against real DB with both a rejected fake file and an accepted real PNG; served with a scoped CORP override so the frontend (different origin) can render them |
 | Real-time/notifications | Backend implemented (polling model) | Notifications list/mark-read endpoints exist and are verified working; no push mechanism (deferred to v1.1 per TARGET_ARCHITECTURE) |
 | Payment gateway integration | N/A by design | None exists in legacy — explicit open business question, not being built absent confirmation |
 | SMS / WhatsApp integration | N/A by design | None exists in legacy |

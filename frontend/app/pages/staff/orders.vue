@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { StaffOrder } from '~/types/order';
 
-definePageMeta({ middleware: 'staff-auth' });
+definePageMeta({ middleware: 'staff-auth', layout: 'staff' });
 
 const api = useApi();
 const orders = ref<StaffOrder[]>([]);

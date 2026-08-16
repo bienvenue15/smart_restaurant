@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DashboardStats, ShiftStatus } from '~/types/staff';
 
-definePageMeta({ middleware: 'staff-auth' });
+definePageMeta({ middleware: 'staff-auth', layout: 'staff' });
 
 const api = useApi();
 const auth = useAuthStore();

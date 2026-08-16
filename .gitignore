@@ -119,3 +119,11 @@ sessions/
 
 # Claude Code harness state
 .claude/
+
+# New stack (frontend/backend) build artifacts
+.nuxt/
+.output/
+frontend/.nuxt/
+frontend/.output/
+backend/dist/
+*.tsbuildinfo

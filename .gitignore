@@ -76,10 +76,12 @@ sessions/*
 error_log
 php_errors.log
 
-# Database dumps (local testing) — may contain real restaurant contact data (PII)
+# Database dumps (local testing) — may contain real restaurant contact data (PII).
+# Root-level legacy MySQL dumps only — NOT Prisma migration SQL, which must
+# be committed for a working migration history (see backend/prisma/migrations/).
 *.dump
-*.sql.gz
-*.sql
+/*.sql
+/*.sql.gz
 !docs/**/*.sql
 
 # Personal notes (developers)

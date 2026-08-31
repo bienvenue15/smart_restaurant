@@ -2,6 +2,9 @@ import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/config/prisma';
 import { Conflict, NotFound } from '@/utils/httpError';
+import { parseRegisterSource } from '@/utils/acquisition';
+import { getEntitlements, restaurantFieldsFromPlan } from '@/modules/subscriptions/subscription.service';
+import { PlatformHeardAbout } from '@prisma/client';
 
 const DEFAULT_CATEGORIES = ['Starters', 'Main Courses', 'Desserts', 'Drinks'];
 const TRIAL_DURATION_DAYS = 30;
@@ -50,16 +53,30 @@ export async function registerRestaurant(data: {
   tin?: string;
   address?: string;
   city?: string;
+  heardAboutUs?: PlatformHeardAbout | string | null;
+  heardAboutNote?: string | null;
+  heardAboutSource?: string | null;
 }) {
   const existingEmail = await prisma.restaurant.findUnique({ where: { email: data.email } });
   if (existingEmail) throw Conflict('A restaurant with this email already exists');
 
   const slug = await generateUniqueSlug(data.restaurantName);
   const passwordHash = await bcrypt.hash(data.password, 10);
-  const today = new Date();
-  const subscriptionEnd = new Date(today.getTime() + TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000);
+  const heardAboutUs = data.heardAboutUs
+    ? parseRegisterSource(data.heardAboutUs)
+    : parseRegisterSource(data.heardAboutSource);
 
   return prisma.$transaction(async (tx) => {
+    const trialPlan = await tx.subscriptionPlan.findUnique({ where: { planName: 'TRIAL' } });
+    const trialFields = trialPlan
+      ? restaurantFieldsFromPlan(trialPlan)
+      : {
+          maxTables: 5,
+          maxUsers: 5,
+          subscriptionStart: new Date(),
+          subscriptionEnd: new Date(Date.now() + TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000),
+        };
+
     const restaurant = await tx.restaurant.create({
       data: {
         name: data.restaurantName,
@@ -70,8 +87,9 @@ export async function registerRestaurant(data: {
         address: data.address,
         city: data.city ?? 'Kigali',
         subscriptionPlan: 'TRIAL',
-        subscriptionStart: today,
-        subscriptionEnd,
+        ...trialFields,
+        heardAboutUs: heardAboutUs ?? null,
+        heardAboutNote: data.heardAboutNote || null,
       },
     });
 
@@ -97,24 +115,39 @@ export async function registerRestaurant(data: {
 export async function getRestaurant(restaurantId: string) {
   const restaurant = await prisma.restaurant.findUnique({ where: { id: restaurantId } });
   if (!restaurant) throw NotFound('Restaurant not found');
-  return restaurant;
+  const plan = await getEntitlements(restaurantId, { includeUsage: true });
+  return {
+    ...restaurant,
+    maxTables: plan.limits.maxTables,
+    maxUsers: plan.limits.maxUsers,
+    plan,
+  };
 }
 
-export async function updateRestaurant(restaurantId: string, data: Partial<Record<string, unknown>>) {
+export async function updateRestaurant(
+  restaurantId: string,
+  data: Partial<{
+    name: string;
+    phone: string | null;
+    address: string | null;
+    city: string;
+    logoUrl: string | null;
+    primaryColor: string | null;
+    secondaryColor: string | null;
+    taxRate: number;
+    serviceCharge: number;
+    heardAboutUs: PlatformHeardAbout | null;
+    heardAboutNote: string | null;
+    heardAboutSkipped: boolean;
+  }>,
+) {
   const restaurant = await prisma.restaurant.findUnique({ where: { id: restaurantId } });
   if (!restaurant) throw NotFound('Restaurant not found');
-  return prisma.restaurant.update({ where: { id: restaurantId }, data });
-}
 
-export async function getSettings(restaurantId: string) {
-  const rows = await prisma.restaurantSetting.findMany({ where: { restaurantId } });
-  return Object.fromEntries(rows.map((r) => [r.settingKey, r.settingValue]));
-}
+  const patch: Record<string, unknown> = { ...data };
+  if (data.heardAboutUs) {
+    patch.heardAboutSkipped = false;
+  }
 
-export async function setSetting(restaurantId: string, settingKey: string, settingValue: string | null) {
-  return prisma.restaurantSetting.upsert({
-    where: { restaurantId_settingKey: { restaurantId, settingKey } },
-    update: { settingValue },
-    create: { restaurantId, settingKey, settingValue },
-  });
+  return prisma.restaurant.update({ where: { id: restaurantId }, data: patch });
 }

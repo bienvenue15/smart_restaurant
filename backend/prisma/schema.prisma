@@ -97,6 +97,28 @@ enum ApprovalStatus {
   REJECTED
 }
 
+enum PlatformHeardAbout {
+  WHATSAPP
+  FACEBOOK
+  INSTAGRAM
+  GOOGLE
+  FRIEND
+  ASSOCIATION
+  EVENT
+  SALES_VISIT
+  OTHER
+}
+
+enum GuestHeardAboutChannel {
+  WALK_IN
+  GOOGLE
+  SOCIAL
+  FRIEND
+  HOTEL
+  EVENT
+  OTHER
+}
+
 enum PermissionCategory {
   ORDERS
   PAYMENTS
@@ -276,10 +298,14 @@ model Restaurant {
   subscriptionPlan  SubscriptionPlanName @default(TRIAL) @map("subscription_plan")
   subscriptionStart DateTime?            @map("subscription_start") @db.Date
   subscriptionEnd   DateTime?            @map("subscription_end") @db.Date
+  heardAboutUs      PlatformHeardAbout?  @map("heard_about_us")
+  heardAboutNote    String?              @map("heard_about_note")
+  heardAboutSkipped Boolean              @default(false) @map("heard_about_skipped")
   createdAt         DateTime             @default(now()) @map("created_at") @db.Timestamptz
   updatedAt         DateTime             @updatedAt @map("updated_at") @db.Timestamptz
 
   staffUsers        StaffUser[]
+  guestHeardAbout   GuestHeardAbout[]
   menuCategories    MenuCategory[]
   menuItems         MenuItem[]
   tables            RestaurantTable[]
@@ -319,6 +345,9 @@ model StaffUser {
   maxDiscountPercent Decimal       @default(0) @map("max_discount_percent") @db.Decimal(5, 2)
   securityLevel      SecurityLevel @default(STANDARD) @map("security_level")
   lastLoginAt        DateTime?     @map("last_login_at") @db.Timestamptz
+  /// Superadmin-only authenticator 2FA. Restaurant staff never use these columns.
+  totpEnabled        Boolean       @default(false) @map("totp_enabled")
+  totpSecret         String?       @map("totp_secret")
   createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz
   updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -342,9 +371,23 @@ model StaffUser {
   auditTrail           AuditTrail[]
   supportTicketsOwned  SupportTicket[]
   supportTicketReplies SupportTicketReply[]
+  passwordResets       PasswordResetToken[]
 
   @@index([restaurantId])
   @@map("staff_users")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  staffId   String    @map("staff_id") @db.Uuid
+  staff     StaffUser @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz
+  usedAt    DateTime? @map("used_at") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([staffId])
+  @@map("password_reset_tokens")
 }
 
 model Permission {
@@ -557,11 +600,28 @@ model Order {
   adjustments      OrderAdjustment[]
   liability        WaiterLiability?
   cashTransactions CashTransaction[]
+  guestHeardAbout  GuestHeardAbout?
 
   @@index([restaurantId])
   @@index([tableId])
   @@index([status])
   @@map("orders")
+}
+
+model GuestHeardAbout {
+  id           String                   @id @default(uuid()) @db.Uuid
+  restaurantId String                   @map("restaurant_id") @db.Uuid
+  restaurant   Restaurant               @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  orderId      String                   @unique @map("order_id") @db.Uuid
+  order        Order                    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  channel      GuestHeardAboutChannel?
+  rating       Int?
+  comment      String?                  @db.VarChar(500)
+  skipped      Boolean                  @default(false)
+  createdAt    DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([restaurantId])
+  @@map("guest_heard_about")
 }
 
 model OrderItem {
@@ -660,6 +720,7 @@ model CashTransaction {
   staff           StaffUser           @relation(fields: [staffId], references: [id], onDelete: Restrict)
   transactionType CashTransactionType @map("transaction_type")
   amount          Decimal             @db.Decimal(10, 2)
+  category        String?             @db.VarChar(50)
   orderId         String?             @map("order_id") @db.Uuid
   order           Order?              @relation(fields: [orderId], references: [id], onDelete: SetNull)
   description     String?

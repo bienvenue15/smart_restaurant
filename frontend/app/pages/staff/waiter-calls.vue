@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { WaiterCall } from '~/types/waiterCall';
 
-definePageMeta({ middleware: 'staff-auth', layout: 'staff' });
+definePageMeta({ middleware: 'staff-auth', layout: 'staff', permissions: ['handle_waiter_calls'] });
 
+const { t } = useI18n();
 const api = useApi();
 const calls = ref<WaiterCall[]>([]);
 const loading = ref(true);
@@ -15,7 +16,7 @@ async function loadCalls() {
   try {
     calls.value = await api.get<WaiterCall[]>('/staff/waiter-calls');
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to load waiter calls';
+    error.value = e instanceof Error ? e.message : t('staff.waiterCalls.loadFailed');
   } finally {
     loading.value = false;
   }
@@ -27,7 +28,7 @@ async function accept(call: WaiterCall) {
     await api.post(`/staff/waiter-calls/${call.id}/accept`);
     await loadCalls();
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to accept call';
+    error.value = e instanceof Error ? e.message : t('staff.waiterCalls.acceptFailed');
   } finally {
     busyId.value = null;
   }
@@ -39,7 +40,7 @@ async function complete(call: WaiterCall) {
     await api.post(`/staff/waiter-calls/${call.id}/complete`);
     await loadCalls();
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to complete call';
+    error.value = e instanceof Error ? e.message : t('staff.waiterCalls.completeFailed');
   } finally {
     busyId.value = null;
   }
@@ -47,39 +48,60 @@ async function complete(call: WaiterCall) {
 
 const priorityColor: Record<string, string> = {
   LOW: 'bg-gray-100 text-gray-700',
-  NORMAL: 'bg-blue-100 text-blue-700',
+  NORMAL: 'bg-sky-100 text-sky-800',
   HIGH: 'bg-red-100 text-red-700',
 };
 
-onMounted(loadCalls);
+function requestTypeLabel(type: string): string {
+  return t(`staff.waiterCalls.requestType.${type.toLowerCase()}`);
+}
+
+function priorityLabel(priority: string): string {
+  return t(`staff.waiterCalls.priority.${priority.toLowerCase()}`);
+}
+
+function callStatusLabel(status: string): string {
+  return t(`staff.waiterCalls.status.${status.toLowerCase()}`);
+}
+
+const liveRefresh = useLiveRefresh('/staff/events', loadCalls, ['waiter_call', 'waiter_call_updated']);
+onMounted(() => {
+  loadCalls();
+  liveRefresh.start();
+});
 </script>
 
 <template>
-  <div class="p-6">
-    <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-xl font-semibold text-gray-900">Waiter calls</h1>
-      <BaseButton variant="secondary" :disabled="loading" @click="loadCalls">Refresh</BaseButton>
-    </div>
+  <div>
+    <StaffPageHeader :title="$t('staff.nav.waiterCalls')" :subtitle="$t('staff.pages.callsSub')">
+      <template #actions>
+        <BaseButton variant="secondary" :disabled="loading" @click="loadCalls">{{ $t('common.refresh') }}</BaseButton>
+      </template>
+    </StaffPageHeader>
 
-    <p v-if="error" class="mb-4 text-sm text-red-600">{{ error }}</p>
-    <p v-if="loading" class="text-sm text-gray-500">Loading…</p>
-    <p v-else-if="calls.length === 0" class="text-sm text-gray-500">No waiter calls.</p>
+    <p v-if="error" class="staff-error">{{ error }}</p>
+    <div v-if="loading" class="staff-empty">{{ $t('staff.waiterCalls.loading') }}</div>
+    <div v-else-if="calls.length === 0" class="staff-empty">{{ $t('staff.waiterCalls.empty') }}</div>
 
     <div v-else class="space-y-3">
-      <div v-for="call in calls" :key="call.id" class="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4">
+      <article v-for="call in calls" :key="call.id" class="staff-card flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div class="flex items-center gap-2">
-            <p class="font-medium text-gray-900">Table {{ call.table.tableNumber }} — {{ call.requestType }}</p>
-            <span class="rounded px-2 py-0.5 text-xs font-medium" :class="priorityColor[call.priority]">{{ call.priority }}</span>
+          <div class="flex flex-wrap items-center gap-2">
+            <p class="font-display font-bold text-ink">
+              {{ $t('staff.waiterCalls.tableRequest', { number: call.table.tableNumber, type: requestTypeLabel(call.requestType) }) }}
+            </p>
+            <span class="staff-chip" :class="priorityColor[call.priority]">{{ priorityLabel(call.priority) }}</span>
           </div>
-          <p v-if="call.message" class="text-sm text-gray-500">{{ call.message }}</p>
-          <p class="text-xs text-gray-400">{{ call.status }} <span v-if="call.assignedTo">· {{ call.assignedTo.fullName }}</span></p>
+          <p v-if="call.message" class="mt-0.5 text-sm text-ink-muted">{{ call.message }}</p>
+          <p class="text-xs text-gray-400">
+            {{ callStatusLabel(call.status) }} <span v-if="call.assignedTo">· {{ call.assignedTo.fullName }}</span>
+          </p>
         </div>
         <div class="flex gap-2">
-          <BaseButton v-if="call.status === 'PENDING'" :disabled="busyId === call.id" @click="accept(call)">Accept</BaseButton>
-          <BaseButton v-if="call.status === 'ACKNOWLEDGED'" :disabled="busyId === call.id" @click="complete(call)">Complete</BaseButton>
+          <BaseButton v-if="call.status === 'PENDING'" :disabled="busyId === call.id" @click="accept(call)">{{ $t('staff.waiterCalls.accept') }}</BaseButton>
+          <BaseButton v-if="call.status === 'ACKNOWLEDGED'" :disabled="busyId === call.id" @click="complete(call)">{{ $t('staff.waiterCalls.complete') }}</BaseButton>
         </div>
-      </div>
+      </article>
     </div>
   </div>
 </template>

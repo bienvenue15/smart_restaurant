@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireCustomerSession, requireStaffAuth } from '@/middleware/auth';
-import { requirePermission } from '@/middleware/permission';
+import { requireAnyPermission, requirePermission } from '@/middleware/permission';
 import { uploadImage } from '@/middleware/upload';
 import { validate } from '@/middleware/validate';
 import { BadRequest } from '@/utils/httpError';
@@ -87,7 +87,7 @@ staffMenuRouter.post('/items/:id/image', requirePermission('manage_menu'), uploa
   }
 });
 
-staffMenuRouter.patch('/items/:id/availability', requirePermission('manage_menu'), async (req, res, next) => {
+staffMenuRouter.patch('/items/:id/availability', requireAnyPermission(['manage_menu', 'edit_menu']), async (req, res, next) => {
   try {
     const item = await menuService.setAvailability(req.staff!.restaurantId!, req.params.id!, Boolean(req.body.isAvailable));
     res.json({ status: 'OK', data: item });

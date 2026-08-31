@@ -4,6 +4,7 @@ export interface PlatformStats {
   totalOrders: number;
   todayOrders: number;
   monthRevenue: number;
+  restaurantsBySource?: Record<string, number>;
 }
 
 export interface AdminRestaurant {
@@ -15,6 +16,7 @@ export interface AdminRestaurant {
   subscriptionPlan: string;
   subscriptionEnd: string | null;
   createdAt: string;
+  heardAboutUs?: string | null;
 }
 
 export interface PlatformUser {
@@ -35,5 +37,21 @@ export interface AdminSubscriptionPlan {
   priceYearly: string;
   maxTables: number;
   maxUsers: number;
+  maxMenuItems: number;
+  maxOrdersPerMonth: number;
+  features: string[] | null;
   isActive: boolean;
+}
+
+export interface BackupFileInfo {
+  filename: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
+export interface BackupList {
+  files: BackupFileInfo[];
+  lastBackupAt: string | null;
+  schedule: string;
+  retentionDays: number;
 }

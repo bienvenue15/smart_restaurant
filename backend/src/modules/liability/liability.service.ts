@@ -1,5 +1,6 @@
 import { OrderStatus, PaymentStatus, Prisma } from '@prisma/client';
 import { prisma } from '@/config/prisma';
+import { publishRealtime } from '@/services/realtime.service';
 
 /**
  * Waiter liability — a real anti-theft/accountability feature, not
@@ -77,7 +78,7 @@ export async function clearOnPayment(tx: Prisma.TransactionClient, orderId: stri
 export const LIABILITY_WAIVER_APPROVAL_THRESHOLD = 10_000;
 
 export async function waiveLiability(liabilityId: string, waivedById: string, reason: string) {
-  return prisma.$transaction(async (tx) => {
+  const liability = await prisma.$transaction(async (tx) => {
     const liability = await tx.waiterLiability.findUniqueOrThrow({ where: { id: liabilityId } });
     const requiresApproval = Number(liability.orderAmount) > LIABILITY_WAIVER_APPROVAL_THRESHOLD;
 
@@ -99,11 +100,13 @@ export async function waiveLiability(liabilityId: string, waivedById: string, re
         status: requiresApproval ? 'PENDING' : 'APPROVED',
       },
     });
+    return liability;
   });
+  await publishRealtime({ channel: 'staff', type: 'liability_updated', restaurantId: liability.restaurantId });
 }
 
 export async function markAsLoss(liabilityId: string, markedById: string, reason: string) {
-  return prisma.$transaction(async (tx) => {
+  const liability = await prisma.$transaction(async (tx) => {
     const liability = await tx.waiterLiability.findUniqueOrThrow({ where: { id: liabilityId } });
 
     await tx.waiterLiability.update({ where: { id: liabilityId }, data: { status: 'LOSS', notes: reason } });
@@ -118,7 +121,9 @@ export async function markAsLoss(liabilityId: string, markedById: string, reason
         reason,
       },
     });
+    return liability;
   });
+  await publishRealtime({ channel: 'staff', type: 'liability_updated', restaurantId: liability.restaurantId });
 }
 
 /** Own liabilities (any staff member can see their own) or, for admin/manager, everyone's. */
@@ -147,6 +152,44 @@ export async function getStats(restaurantId: string) {
   });
 
   return grouped.map((g) => ({ status: g.status, count: g._count, totalAmount: Number(g._sum.orderAmount ?? 0) }));
+}
+
+/** A staff member's own accountability summary — available to every role, not gated behind `view_reports`. */
+export async function getMySummary(restaurantId: string, staffId: string) {
+  const grouped = await prisma.waiterLiability.groupBy({
+    by: ['status'],
+    where: { restaurantId, waiterId: staffId },
+    _sum: { orderAmount: true },
+    _count: true,
+  });
+
+  return grouped.map((g) => ({ status: g.status, count: g._count, totalAmount: Number(g._sum.orderAmount ?? 0) }));
+}
+
+/** Per-staff breakdown of waived liabilities — "who has waived how much", for admin/manager accountability. */
+export async function getWaivedByStaff(restaurantId: string) {
+  const grouped = await prisma.waiterLiability.groupBy({
+    by: ['waiterId'],
+    where: { restaurantId, status: 'WAIVED' },
+    _sum: { orderAmount: true },
+    _count: true,
+  });
+
+  const staff = await prisma.staffUser.findMany({
+    where: { id: { in: grouped.map((g) => g.waiterId) } },
+    select: { id: true, fullName: true, username: true },
+  });
+  const staffById = new Map(staff.map((s) => [s.id, s]));
+
+  return grouped
+    .map((g) => ({
+      waiterId: g.waiterId,
+      fullName: staffById.get(g.waiterId)?.fullName ?? 'Unknown',
+      username: staffById.get(g.waiterId)?.username ?? '',
+      count: g._count,
+      totalAmount: Number(g._sum.orderAmount ?? 0),
+    }))
+    .sort((a, b) => b.totalAmount - a.totalAmount);
 }
 
 /** 120-minute abandoned-order auto-loss window, preserved from legacy. */

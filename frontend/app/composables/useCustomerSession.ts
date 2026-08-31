@@ -12,11 +12,16 @@ export function useCustomerSession() {
 
   async function scan(qrCode: string) {
     const api = useApi();
-    const result = await api.post<ScanSessionResult>('/customer/session/scan', { qrCode });
+    const result = await api.post<ScanSessionResult>('/customer/session/scan', { qrCode }, { silent: true });
     restaurant.value = result.restaurant;
     table.value = result.table;
     return result;
   }
 
-  return { restaurant, table, scan };
+  function clear() {
+    restaurant.value = null;
+    table.value = null;
+  }
+
+  return { restaurant, table, scan, clear };
 }

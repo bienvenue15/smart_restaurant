@@ -16,6 +16,7 @@ customerSessionRouter.post('/scan', validate(scanQrCodeSchema), async (req, res,
       httpOnly: true,
       secure: config.nodeEnv === 'production',
       sameSite: 'lax',
+      path: '/',
       maxAge: 2 * 60 * 60 * 1000,
     });
 

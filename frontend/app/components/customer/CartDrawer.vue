@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import type { CartLine } from '~/types/menu';
 
-const props = defineProps<{
-  open: boolean;
-  cart: CartLine[];
-  total: number;
-  placing: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    open: boolean;
+    cart: CartLine[];
+    total: number;
+    placing: boolean;
+    submitLabel?: string;
+    submitLabelBusy?: string;
+  }>(),
+  { submitLabel: 'Place order', submitLabelBusy: 'Placing order…' },
+);
 
 const emit = defineEmits<{
   close: [];
@@ -20,12 +25,12 @@ const emit = defineEmits<{
     <div v-if="props.open" class="fixed inset-0 z-50 flex justify-end bg-black/30" @click.self="emit('close')">
       <div class="flex h-full w-full max-w-sm flex-col bg-white shadow-xl">
         <div class="flex items-center justify-between border-b border-gray-200 p-4">
-          <h2 class="text-lg font-semibold text-gray-900">Your order</h2>
+          <h2 class="text-lg font-semibold text-gray-900">{{ $t('customer.yourOrder') }}</h2>
           <button class="text-gray-400 hover:text-gray-600" @click="emit('close')">✕</button>
         </div>
 
         <div class="flex-1 overflow-y-auto p-4">
-          <p v-if="props.cart.length === 0" class="text-sm text-gray-500">Your cart is empty.</p>
+          <p v-if="props.cart.length === 0" class="text-sm text-gray-500">{{ $t('customer.cartEmpty') }}</p>
 
           <div v-for="line in props.cart" :key="line.menuItemId" class="mb-3 flex items-center justify-between gap-2">
             <div class="min-w-0">
@@ -52,11 +57,11 @@ const emit = defineEmits<{
 
         <div class="border-t border-gray-200 p-4">
           <div class="mb-3 flex items-center justify-between text-sm font-semibold text-gray-900">
-            <span>Total</span>
+pr            <span>{{ $t('common.total') }}</span>
             <span>{{ props.total.toLocaleString() }}</span>
           </div>
           <BaseButton class="w-full" :disabled="props.cart.length === 0 || props.placing" @click="emit('placeOrder')">
-            {{ props.placing ? 'Placing order…' : 'Place order' }}
+            {{ props.placing ? props.submitLabelBusy : props.submitLabel }}
           </BaseButton>
         </div>
       </div>

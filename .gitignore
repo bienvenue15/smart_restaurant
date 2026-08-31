@@ -1,43 +1,14 @@
-# ============================================================
-# .gitignore - Smart Restaurant System
-# Local Development Files
-# ============================================================
-
-# Environment files
+# Environment
 .env
 .env.local
 .env.production
 
-# Local development overrides
-config.local.php
-
-# Database backups (keep structure, ignore data backups)
-backups/*.sql
-!backups/.gitkeep
-
 # Logs
-logs/*.log
-logs/*.txt
 *.log
-!logs/.gitkeep
+npm-debug.log
+yarn-error.log
 
-# Uploaded files
-assets/images/menu/*
-!assets/images/menu/.gitkeep
-!assets/images/menu/1/.gitkeep
-!assets/images/menu/2/.gitkeep
-
-# Generated QR codes (regenerate as needed)
-images/qrcodes/*.png
-images/qrcodes/*.pdf
-!images/qrcodes/.gitkeep
-
-# Temporary files
-tmp/*
-temp/*
-cache/*
-
-# IDE and Editor files
+# IDE / OS
 .vscode/
 .idea/
 *.swp
@@ -45,87 +16,13 @@ cache/*
 *~
 .DS_Store
 Thumbs.db
-
-# OS files
-*.DS_Store
 desktop.ini
 $RECYCLE.BIN/
 
-# PHP
-vendor/
-composer.lock
-
-# Node modules (if using any build tools)
+# Dependencies and build
 node_modules/
-npm-debug.log
-yarn-error.log
-# NOTE: package-lock.json is intentionally NOT ignored for the new
-# frontend/ and backend/ stacks (docs/TARGET_ARCHITECTURE.md) — lockfiles
-# are committed there for reproducible installs. This blanket rule was
-# inherited from the legacy app, which never had a Node build step.
-
-# Build files
 dist/
 build/
-
-# Session files
-sessions/*
-!sessions/.gitkeep
-
-# Error logs
-error_log
-php_errors.log
-
-# Database dumps (local testing) — may contain real restaurant contact data (PII).
-# Root-level legacy MySQL dumps only — NOT Prisma migration SQL, which must
-# be committed for a working migration history (see backend/prisma/migrations/).
-*.dump
-/*.sql
-/*.sql.gz
-!docs/**/*.sql
-
-# Personal notes (developers)
-NOTES.md
-TODO.md
-*.personal.md
-
-# Test data
-test_data/*
-sample_data/*
-
-# Coverage reports
-coverage/
-*.coverage
-
-# PHPUnit
-.phpunit.result.cache
-phpunit.xml
-
-# Database connection testing
-db_test.php
-connection_test.php
-
-# Local scripts (personal automation)
-*.local.ps1
-*.local.sh
-local-*.ps1
-local-*.sh
-
-# Sensitive data
-secrets.php
-credentials.php
-api_keys.php
-
-# Keep empty directories with .gitkeep
-!.gitkeep
-
-sessions/
-*.session
-
-# Claude Code harness state
-.claude/
-
-# New stack (frontend/backend) build artifacts
 .nuxt/
 .output/
 frontend/.nuxt/
@@ -136,3 +33,31 @@ backend/dist/
 # Uploaded menu images (local disk storage, not committed)
 backend/uploads/*
 !backend/uploads/.gitkeep
+
+# Database dumps produced by the superadmin backup trigger
+backend/backups/*.sql
+!backend/backups/.gitkeep
+
+# Root-level SQL dumps (may contain restaurant PII). Prisma migrations stay tracked.
+*.dump
+/*.sql
+/*.sql.gz
+!docs/**/*.sql
+
+# Personal notes
+NOTES.md
+TODO.md
+*.personal.md
+
+# Local scripts
+*.local.ps1
+*.local.sh
+local-*.ps1
+local-*.sh
+
+# Coverage
+coverage/
+*.coverage
+
+# Claude Code harness state
+.claude/

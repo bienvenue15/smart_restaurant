@@ -8,7 +8,8 @@ activityLogRouter.use(requireStaffAuth);
 
 activityLogRouter.get('/', requirePermission('view_activity_log'), async (req, res, next) => {
   try {
-    const log = await activityLogService.getActivityLog(req.staff!.restaurantId!);
+    const search = typeof req.query.search === 'string' ? req.query.search : undefined;
+    const log = await activityLogService.getActivityLog(req.staff!.restaurantId!, { search });
     res.json({ status: 'OK', data: log });
   } catch (err) {
     next(err);

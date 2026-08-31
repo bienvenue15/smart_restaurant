@@ -1,14 +1,14 @@
 import { prisma } from '@/config/prisma';
 import { Conflict, NotFound } from '@/utils/httpError';
 import { signCustomerSessionToken } from '@/modules/auth/jwt';
-import { isSubscriptionActive } from '@/modules/subscriptions/subscription.service';
+import { hasFeature, isSubscriptionActive } from '@/modules/subscriptions/subscription.service';
 
 /** 120-minute device-table lock, preserved from legacy (docs/CURRENT_SYSTEM_AUDIT.md §4). */
 const DEVICE_LOCK_DURATION_MINUTES = 120;
 
 interface ScanResult {
   sessionToken: string;
-  restaurant: { id: string; name: string; currency: string };
+  restaurant: { id: string; name: string; currency: string; logoUrl: string | null; primaryColor: string };
   table: { id: string; tableNumber: string };
 }
 
@@ -31,6 +31,9 @@ export async function scanQrCode(qrCode: string, deviceFingerprint: string): Pro
   const today = new Date();
   if (!(await isSubscriptionActive(restaurant.id))) {
     throw Conflict('This restaurant is temporarily unavailable');
+  }
+  if (!(await hasFeature(restaurant.id, 'qr_ordering'))) {
+    throw Conflict('QR ordering is not included in this restaurant’s plan');
   }
 
   await cleanupExpiredLocks(table.restaurantId);
@@ -82,7 +85,13 @@ export async function scanQrCode(qrCode: string, deviceFingerprint: string): Pro
 
   return {
     sessionToken,
-    restaurant: { id: restaurant.id, name: restaurant.name, currency: restaurant.currency },
+    restaurant: {
+      id: restaurant.id,
+      name: restaurant.name,
+      currency: restaurant.currency,
+      logoUrl: restaurant.logoUrl,
+      primaryColor: restaurant.primaryColor,
+    },
     table: { id: table.id, tableNumber: table.tableNumber },
   };
 }
@@ -92,6 +101,13 @@ export async function extendLockOnActivity(deviceTableLockId: string): Promise<v
   await prisma.deviceTableLock.updateMany({
     where: { id: deviceTableLockId, isActive: true },
     data: { expiresAt, lastActivity: new Date() },
+  });
+}
+
+export async function endSession(deviceTableLockId: string): Promise<void> {
+  await prisma.deviceTableLock.updateMany({
+    where: { id: deviceTableLockId, isActive: true },
+    data: { isActive: false },
   });
 }
 

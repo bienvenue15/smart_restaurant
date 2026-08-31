@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { StaffMember } from '~/types/staffUser';
 
-definePageMeta({ middleware: 'staff-auth', layout: 'staff' });
+definePageMeta({ middleware: 'staff-auth', layout: 'staff', permissions: ['manage_staff'] });
 
+const { t } = useI18n();
 const api = useApi();
 const team = ref<StaffMember[]>([]);
 const loading = ref(true);
@@ -18,7 +19,7 @@ async function loadTeam() {
   try {
     team.value = await api.get<StaffMember[]>('/staff/users');
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to load team';
+    error.value = e instanceof Error ? e.message : t('staff.team.loadFailed');
   } finally {
     loading.value = false;
   }
@@ -32,7 +33,7 @@ async function addMember() {
     form.value = { username: '', password: '', fullName: '', role: 'WAITER' };
     await loadTeam();
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to add team member';
+    error.value = e instanceof Error ? e.message : t('staff.team.addMemberFailed');
   } finally {
     creating.value = false;
   }
@@ -43,65 +44,85 @@ async function toggleActive(member: StaffMember) {
     await api.patch(`/staff/users/${member.id}`, { isActive: !member.isActive });
     await loadTeam();
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to update team member';
+    error.value = e instanceof Error ? e.message : t('staff.team.updateMemberFailed');
   }
 }
 
-onMounted(loadTeam);
+function roleLabel(role: string): string {
+  return t(`staff.team.role.${role.toLowerCase()}`);
+}
+
+const liveRefresh = useLiveRefresh('/staff/events', loadTeam, ['team_updated']);
+onMounted(() => {
+  loadTeam();
+  liveRefresh.start();
+});
 </script>
 
 <template>
-  <div class="p-6">
-    <h1 class="mb-4 text-xl font-semibold text-gray-900">Team</h1>
+  <div>
+    <StaffPageHeader :title="$t('staff.nav.team')" :subtitle="$t('staff.pages.teamSub')" />
 
-    <form class="mb-6 flex flex-wrap items-end gap-2" @submit.prevent="addMember">
+    <form class="staff-card mb-5 flex flex-wrap items-end gap-3" @submit.prevent="addMember">
       <div>
-        <label class="block text-xs text-gray-500">Full name</label>
-        <input v-model="form.fullName" class="rounded-md border border-gray-300 px-2 py-1.5 text-sm" />
+        <label class="mb-1 block text-xs font-medium text-ink-muted">{{ $t('staff.team.fullNameLabel') }}</label>
+        <input v-model="form.fullName" class="staff-input" />
       </div>
       <div>
-        <label class="block text-xs text-gray-500">Username</label>
-        <input v-model="form.username" class="rounded-md border border-gray-300 px-2 py-1.5 text-sm" />
+        <label class="mb-1 block text-xs font-medium text-ink-muted">{{ $t('staff.team.usernameLabel') }}</label>
+        <input v-model="form.username" class="staff-input" />
       </div>
       <div>
-        <label class="block text-xs text-gray-500">Password</label>
-        <input v-model="form.password" type="password" class="rounded-md border border-gray-300 px-2 py-1.5 text-sm" />
+        <label class="mb-1 block text-xs font-medium text-ink-muted">{{ $t('staff.team.passwordLabel') }}</label>
+        <input v-model="form.password" type="password" class="staff-input" />
       </div>
       <div>
-        <label class="block text-xs text-gray-500">Role</label>
-        <select v-model="form.role" class="rounded-md border border-gray-300 px-2 py-1.5 text-sm">
-          <option v-for="role in roles" :key="role" :value="role">{{ role }}</option>
+        <label class="mb-1 block text-xs font-medium text-ink-muted">{{ $t('staff.team.roleLabel') }}</label>
+        <select v-model="form.role" class="staff-select">
+          <option v-for="role in roles" :key="role" :value="role">{{ roleLabel(role) }}</option>
         </select>
       </div>
-      <BaseButton type="submit" :disabled="creating">Add member</BaseButton>
+      <BaseButton type="submit" :disabled="creating">{{ $t('staff.team.addMember') }}</BaseButton>
     </form>
 
-    <p v-if="error" class="mb-4 text-sm text-red-600">{{ error }}</p>
-    <p v-if="loading" class="text-sm text-gray-500">Loading…</p>
+    <p v-if="error" class="staff-error">{{ error }}</p>
+    <div v-if="loading" class="staff-empty">{{ $t('staff.team.loading') }}</div>
+    <div v-else-if="team.length === 0" class="staff-empty">{{ $t('staff.team.noMembers') }}</div>
 
-    <table v-else class="w-full overflow-hidden rounded-lg border border-gray-200 bg-white text-sm">
-      <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500">
-        <tr>
-          <th class="px-4 py-2">Name</th>
-          <th class="px-4 py-2">Username</th>
-          <th class="px-4 py-2">Role</th>
-          <th class="px-4 py-2">Status</th>
-          <th class="px-4 py-2"></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="member in team" :key="member.id" class="border-t border-gray-100">
-          <td class="px-4 py-2">{{ member.fullName }}</td>
-          <td class="px-4 py-2 text-gray-500">{{ member.username }}</td>
-          <td class="px-4 py-2">{{ member.role }}</td>
-          <td class="px-4 py-2">{{ member.isActive ? 'Active' : 'Inactive' }}</td>
-          <td class="px-4 py-2">
-            <BaseButton variant="secondary" @click="toggleActive(member)">
-              {{ member.isActive ? 'Deactivate' : 'Activate' }}
-            </BaseButton>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <div v-else class="staff-card overflow-x-auto !p-0">
+      <table class="w-full text-sm">
+        <thead class="bg-surface text-left text-xs uppercase tracking-wide text-ink-muted">
+          <tr>
+            <th class="px-4 py-3">{{ $t('common.name') }}</th>
+            <th class="px-4 py-3">{{ $t('staff.team.usernameLabel') }}</th>
+            <th class="px-4 py-3">{{ $t('staff.team.roleLabel') }}</th>
+            <th class="px-4 py-3">{{ $t('common.status') }}</th>
+            <th class="px-4 py-3"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="member in team" :key="member.id" class="border-t border-gray-100">
+            <td class="px-4 py-3 font-display font-semibold text-ink">{{ member.fullName }}</td>
+            <td class="px-4 py-3 text-ink-muted">{{ member.username }}</td>
+            <td class="px-4 py-3">
+              <span class="staff-chip bg-surface text-ink-muted">{{ roleLabel(member.role) }}</span>
+            </td>
+            <td class="px-4 py-3">
+              <span
+                class="staff-chip"
+                :class="member.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-500'"
+              >
+                {{ member.isActive ? $t('common.active') : $t('common.inactive') }}
+              </span>
+            </td>
+            <td class="px-4 py-3">
+              <BaseButton variant="secondary" @click="toggleActive(member)">
+                {{ member.isActive ? $t('staff.team.deactivate') : $t('staff.team.activate') }}
+              </BaseButton>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>

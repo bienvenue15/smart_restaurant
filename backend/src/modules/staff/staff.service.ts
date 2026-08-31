@@ -3,6 +3,7 @@ import { StaffRole } from '@prisma/client';
 import { prisma } from '@/config/prisma';
 import { Conflict, NotFound } from '@/utils/httpError';
 import { LIMIT_CHECKERS } from '@/modules/subscriptions/subscription.service';
+import { publishRealtime } from '@/services/realtime.service';
 
 export async function listStaff(restaurantId: string) {
   return prisma.staffUser.findMany({
@@ -33,17 +34,29 @@ export async function createStaff(
   if (existing) throw Conflict('Username already taken');
 
   const passwordHash = await bcrypt.hash(data.password, 10);
-  const { password: _password, ...rest } = data;
-  return prisma.staffUser.create({
-    data: { ...rest, restaurantId, passwordHash },
+  const { password: _password, canHandleCash, ...rest } = data;
+  const created = await prisma.staffUser.create({
+    data: {
+      ...rest,
+      restaurantId,
+      passwordHash,
+      canHandleCash: canHandleCash ?? data.role === 'CASHIER',
+    },
     select: { id: true, username: true, fullName: true, role: true },
   });
+  await publishRealtime({ channel: 'staff', type: 'team_updated', restaurantId });
+  return created;
 }
 
 export async function updateStaff(restaurantId: string, staffId: string, data: Partial<Record<string, unknown>>) {
   const staff = await prisma.staffUser.findFirst({ where: { id: staffId, restaurantId } });
   if (!staff) throw NotFound('Staff member not found');
-  return prisma.staffUser.update({ where: { id: staffId }, data });
+  if (data.isActive === true && !staff.isActive) {
+    await LIMIT_CHECKERS.users(restaurantId);
+  }
+  const updated = await prisma.staffUser.update({ where: { id: staffId }, data });
+  await publishRealtime({ channel: 'staff', type: 'team_updated', restaurantId });
+  return updated;
 }
 
 /**
@@ -56,10 +69,13 @@ export async function deleteStaff(restaurantId: string, staffId: string) {
   const staff = await prisma.staffUser.findFirst({ where: { id: staffId, restaurantId } });
   if (!staff) throw NotFound('Staff member not found');
 
-  const openCashSession = await prisma.cashSession.findFirst({ where: { staffId, status: 'OPEN' } });
+  const openCashSession = await prisma.cashSession.findFirst({
+    where: { staffId, status: { in: ['OPEN', 'AUDITING'] } },
+  });
   if (openCashSession) throw Conflict('Cannot delete a staff member with an open cash session');
 
   await prisma.staffUser.update({ where: { id: staffId }, data: { isActive: false } });
+  await publishRealtime({ channel: 'staff', type: 'team_updated', restaurantId });
 }
 
 export async function clockIn(staffId: string, restaurantId: string) {
@@ -68,6 +84,7 @@ export async function clockIn(staffId: string, restaurantId: string) {
 
   const shift = await prisma.staffShift.create({ data: { staffId, restaurantId } });
   await prisma.staffActivityLog.create({ data: { staffId, action: 'clock_in' } });
+  await publishRealtime({ channel: 'staff', type: 'team_updated', restaurantId });
   return shift;
 }
 
@@ -80,6 +97,7 @@ export async function clockOut(staffId: string) {
     data: { clockOut: new Date(), status: 'COMPLETED' },
   });
   await prisma.staffActivityLog.create({ data: { staffId, action: 'clock_out' } });
+  await publishRealtime({ channel: 'staff', type: 'team_updated', restaurantId: openShift.restaurantId });
   return shift;
 }
 

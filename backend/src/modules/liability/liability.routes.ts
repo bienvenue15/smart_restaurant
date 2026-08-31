@@ -38,6 +38,27 @@ liabilityRouter.get('/stats', requirePermission('view_reports'), async (req, res
   }
 });
 
+// Every staff member's own accountability summary (their ACTIVE exposure,
+// WAIVED total, etc.) — no `view_reports` gate, since it's scoped to the
+// caller's own data only, unlike /stats which is restaurant-wide.
+liabilityRouter.get('/my-summary', async (req, res, next) => {
+  try {
+    const summary = await liabilityService.getMySummary(req.staff!.restaurantId!, req.staff!.id);
+    res.json({ status: 'OK', data: summary });
+  } catch (err) {
+    next(err);
+  }
+});
+
+liabilityRouter.get('/waived-by-staff', requirePermission('view_reports'), async (req, res, next) => {
+  try {
+    const breakdown = await liabilityService.getWaivedByStaff(req.staff!.restaurantId!);
+    res.json({ status: 'OK', data: breakdown });
+  } catch (err) {
+    next(err);
+  }
+});
+
 liabilityRouter.post('/:id/waive', requirePermission('manage_staff'), validate(liabilityReasonSchema), async (req, res, next) => {
   try {
     await liabilityService.waiveLiability(req.params.id!, req.staff!.id, req.body.reason);

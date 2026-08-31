@@ -22,17 +22,41 @@ import { liabilityRouter } from '@/modules/liability/liability.routes';
 import { notificationRouter } from '@/modules/notifications/notification.routes';
 import { activityLogRouter } from '@/modules/activityLog/activityLog.routes';
 import { adjustmentRouter } from '@/modules/adjustments/adjustment.routes';
+import { adminSupportMessageRouter, adminSupportRouter, publicSupportRouter, staffSupportRouter } from '@/modules/support/support.routes';
+import { adminAnnouncementRouter, customerAnnouncementRouter, staffAnnouncementRouter } from '@/modules/announcements/announcement.routes';
+import { maintenanceModeGate } from '@/middleware/maintenanceMode';
+import { loginLimiter, passwordResetLimiter, publicFormLimiter } from '@/middleware/rateLimit';
+import { requireCustomerSession, requireStaffAuth } from '@/middleware/auth';
+import { streamCustomerEvents, streamStaffEvents } from '@/modules/realtime/realtime.routes';
 
 export function createApp() {
   const app = express();
+  if (config.nodeEnv === 'production') {
+    app.set('trust proxy', 1);
+  }
 
-  // Helmet + a same-origin-by-default CORS allow-list — the legacy app set
-  // `Access-Control-Allow-Origin: *` globally, which combined with
-  // cookie-based auth is a real CSRF-adjacent risk (docs/SECURITY_AUDIT.md #5).
   app.use(helmet());
   app.use(
     cors({
-      origin: config.corsOrigin.length > 0 ? config.corsOrigin : false,
+      origin(origin, callback) {
+        if (!origin) {
+          callback(null, true);
+          return;
+        }
+        if (config.corsOrigin.includes(origin)) {
+          callback(null, true);
+          return;
+        }
+        // Dev servers often land on :3001 when :3000 is taken.
+        if (
+          config.nodeEnv !== 'production' &&
+          /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+        ) {
+          callback(null, true);
+          return;
+        }
+        callback(null, false);
+      },
       credentials: true,
     }),
   );
@@ -41,6 +65,14 @@ export function createApp() {
   app.use(pinoHttp({ logger }));
 
   app.get('/health', (_req, res) => res.json({ status: 'OK' }));
+  app.use(maintenanceModeGate);
+
+  app.use('/api/v1/auth/login', loginLimiter);
+  app.use('/api/v1/auth/login/2fa', loginLimiter);
+  app.use('/api/v1/auth/forgot-password', passwordResetLimiter);
+  app.use('/api/v1/auth/reset-password', passwordResetLimiter);
+  app.use('/api/v1/support/messages', publicFormLimiter);
+  app.use('/api/v1/restaurants/register', publicFormLimiter);
 
   // Helmet's default Cross-Origin-Resource-Policy (same-origin) would
   // otherwise block the frontend (a different origin in dev/prod) from
@@ -73,6 +105,16 @@ export function createApp() {
   app.use('/api/v1/staff/notifications', notificationRouter);
   app.use('/api/v1/staff/activity-log', activityLogRouter);
   app.use('/api/v1/staff/adjustments', adjustmentRouter);
+  app.use('/api/v1/staff/support-tickets', staffSupportRouter);
+  app.use('/api/v1/support', publicSupportRouter);
+  app.use('/api/v1/admin/support-tickets', adminSupportRouter);
+  app.use('/api/v1/admin/support-messages', adminSupportMessageRouter);
+  app.use('/api/v1/staff/announcements', staffAnnouncementRouter);
+  app.use('/api/v1/customer/announcements', customerAnnouncementRouter);
+  app.use('/api/v1/admin/announcements', adminAnnouncementRouter);
+
+  app.get('/api/v1/staff/events', requireStaffAuth, streamStaffEvents);
+  app.get('/api/v1/customer/events', requireCustomerSession, streamCustomerEvents);
 
   app.use((_req, res) => {
     res.status(404).json({ status: 'FAIL', code: 'NOT_FOUND', message: 'Endpoint not found' });

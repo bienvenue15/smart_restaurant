@@ -11,7 +11,7 @@ export const createStaffSchema = Joi.object({
   role: Joi.string()
     .valid(...ROLES)
     .required(),
-  canHandleCash: Joi.boolean().default(false),
+  canHandleCash: Joi.boolean(),
   maxDiscountPercent: Joi.number().min(0).max(100).default(0),
 });
 

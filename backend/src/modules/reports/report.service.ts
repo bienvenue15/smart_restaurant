@@ -38,7 +38,139 @@ export async function getSalesReport(restaurantId: string, startDate: Date, endD
     revenueByDay[day] = (revenueByDay[day] ?? 0) + Number(order.totalAmount);
   }
 
-  return { totalRevenue, orderCount, averageOrderValue, revenueByPaymentMethod, revenueByDay };
+  const guestWhere = {
+    restaurantId,
+    skipped: false,
+    createdAt: { gte: startDate, lte: endDate },
+  };
+
+  const [guestHeardAbout, ratingAgg, guestCommentRows] = await Promise.all([
+    prisma.guestHeardAbout.groupBy({
+      by: ['channel'],
+      where: { ...guestWhere, channel: { not: null } },
+      _count: { _all: true },
+    }),
+    prisma.guestHeardAbout.aggregate({
+      where: { ...guestWhere, rating: { not: null } },
+      _avg: { rating: true },
+      _count: { rating: true },
+    }),
+    prisma.guestHeardAbout.findMany({
+      where: { ...guestWhere, comment: { not: null } },
+      select: {
+        rating: true,
+        comment: true,
+        createdAt: true,
+        order: { select: { orderNumber: true, table: { select: { tableNumber: true } } } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    }),
+  ]);
+
+  const guestsBySource: Record<string, number> = {};
+  for (const row of guestHeardAbout) {
+    if (row.channel) guestsBySource[row.channel] = row._count._all;
+  }
+
+  const guestComments = guestCommentRows
+    .filter((row): row is typeof row & { comment: string } => Boolean(row.comment))
+    .map((row) => ({
+      rating: row.rating,
+      comment: row.comment,
+      createdAt: row.createdAt,
+      orderNumber: row.order.orderNumber,
+      tableNumber: row.order.table.tableNumber,
+    }));
+
+  return {
+    totalRevenue,
+    orderCount,
+    averageOrderValue,
+    revenueByPaymentMethod,
+    revenueByDay,
+    guestsBySource,
+    averageRating: ratingAgg._count.rating > 0 ? Number(ratingAgg._avg.rating) : null,
+    ratingCount: ratingAgg._count.rating,
+    guestComments,
+  };
+}
+
+export type ProfitLossPeriod = 'daily' | 'weekly' | 'monthly';
+
+function periodRange(period: ProfitLossPeriod): { startDate: Date; endDate: Date } {
+  const endDate = new Date();
+  const startDate = new Date();
+  if (period === 'daily') {
+    startDate.setHours(0, 0, 0, 0);
+  } else if (period === 'weekly') {
+    const day = startDate.getDay(); // 0=Sun..6=Sat
+    const diffToMonday = day === 0 ? 6 : day - 1;
+    startDate.setDate(startDate.getDate() - diffToMonday);
+    startDate.setHours(0, 0, 0, 0);
+  } else {
+    startDate.setDate(1);
+    startDate.setHours(0, 0, 0, 0);
+  }
+  return { startDate, endDate };
+}
+
+/**
+ * Owner-only profit & loss snapshot (`view_financials` permission — ADMIN
+ * only among restaurant-scoped roles, see permissions.ts). There's no
+ * ingredient/COGS cost model in this system, so "cost" here is every
+ * concrete outflow the data actually captures: cash withdrawals/expenses,
+ * approved refunds, and liabilities that ended in LOSS or were WAIVED
+ * (money legitimately earned but never collected). Revenue uses the same
+ * COMPLETED-order recognition rule as the rest of this module.
+ */
+export async function getProfitLoss(restaurantId: string, period: ProfitLossPeriod) {
+  const { startDate, endDate } = periodRange(period);
+  const dateWhere = { gte: startDate, lte: endDate };
+
+  const [revenueAgg, cashOut, refunds, liabilityLosses] = await Promise.all([
+    prisma.order.aggregate({
+      where: { restaurantId, createdAt: dateWhere, status: { in: REVENUE_RECOGNIZED_STATUSES } },
+      _sum: { totalAmount: true },
+    }),
+    prisma.cashTransaction.groupBy({
+      by: ['transactionType'],
+      where: { restaurantId, createdAt: dateWhere, transactionType: { in: ['EXPENSE', 'WITHDRAWAL'] } },
+      _sum: { amount: true },
+    }),
+    prisma.orderAdjustment.aggregate({
+      where: { order: { restaurantId }, adjustmentType: 'REFUND', status: 'APPROVED', createdAt: dateWhere },
+      _sum: { amount: true },
+    }),
+    prisma.waiterLiability.groupBy({
+      by: ['status'],
+      where: { restaurantId, status: { in: ['LOSS', 'WAIVED'] }, liabilityCreatedAt: dateWhere },
+      _sum: { orderAmount: true },
+    }),
+  ]);
+
+  const revenue = Number(revenueAgg._sum.totalAmount ?? 0);
+  const expenses = Number(cashOut.find((c) => c.transactionType === 'EXPENSE')?._sum.amount ?? 0);
+  const withdrawals = Number(cashOut.find((c) => c.transactionType === 'WITHDRAWAL')?._sum.amount ?? 0);
+  const refundTotal = Number(refunds._sum.amount ?? 0);
+  const liabilityLoss = Number(liabilityLosses.find((l) => l.status === 'LOSS')?._sum.orderAmount ?? 0);
+  const liabilityWaived = Number(liabilityLosses.find((l) => l.status === 'WAIVED')?._sum.orderAmount ?? 0);
+
+  const costs = expenses + withdrawals + refundTotal + liabilityLoss + liabilityWaived;
+  const net = revenue - costs;
+  const marginPct = revenue > 0 ? Number(((net / revenue) * 100).toFixed(2)) : 0;
+
+  return {
+    period,
+    startDate,
+    endDate,
+    revenue,
+    costs,
+    costBreakdown: { expenses, withdrawals, refunds: refundTotal, liabilityLoss, liabilityWaived },
+    net,
+    marginPct,
+    status: net > 0 ? 'PROFIT' : net < 0 ? 'LOSS' : 'BREAK_EVEN',
+  };
 }
 
 export async function getTopMenuItems(restaurantId: string, startDate: Date, endDate: Date, limit = 10) {
@@ -70,7 +202,19 @@ export async function getDashboardStats(restaurantId: string) {
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
 
-  const [todayOrders, todayRevenue, pendingOrders, activeTables, openCashSessions, pendingCalls, pendingAdjustments] = await Promise.all([
+  const [
+    todayOrders,
+    todayRevenue,
+    pendingOrders,
+    activeTables,
+    openCashSessions,
+    pendingCalls,
+    pendingAdjustments,
+    pendingCashCloses,
+    activeLiabilities,
+    restaurant,
+    completedOrders,
+  ] = await Promise.all([
     prisma.order.count({ where: { restaurantId, createdAt: { gte: startOfToday } } }),
     prisma.order.aggregate({
       where: { restaurantId, createdAt: { gte: startOfToday }, status: { in: REVENUE_RECOGNIZED_STATUSES } },
@@ -78,9 +222,16 @@ export async function getDashboardStats(restaurantId: string) {
     }),
     prisma.order.count({ where: { restaurantId, status: 'PENDING' } }),
     prisma.restaurantTable.count({ where: { restaurantId, status: 'OCCUPIED' } }),
-    prisma.cashSession.aggregate({ where: { restaurantId, status: 'OPEN' }, _sum: { cashInHand: true } }),
+    prisma.cashSession.aggregate({ where: { restaurantId, status: { in: ['OPEN', 'AUDITING'] } }, _sum: { cashInHand: true } }),
     prisma.waiterCall.count({ where: { restaurantId, status: 'PENDING' } }),
     prisma.orderAdjustment.count({ where: { order: { restaurantId }, status: 'PENDING' } }),
+    prisma.cashSession.count({ where: { restaurantId, status: 'AUDITING' } }),
+    prisma.waiterLiability.count({ where: { restaurantId, status: 'ACTIVE' } }),
+    prisma.restaurant.findUnique({
+      where: { id: restaurantId },
+      select: { heardAboutUs: true, heardAboutSkipped: true },
+    }),
+    prisma.order.count({ where: { restaurantId, status: 'COMPLETED' } }),
   ]);
 
   return {
@@ -90,6 +241,8 @@ export async function getDashboardStats(restaurantId: string) {
     activeTables,
     cashInHand: Number(openCashSessions._sum.cashInHand ?? 0),
     pendingWaiterCalls: pendingCalls,
-    pendingApprovals: pendingAdjustments,
+    pendingApprovals: pendingAdjustments + pendingCashCloses,
+    pendingLiabilities: activeLiabilities,
+    askHowYouFoundUs: !restaurant?.heardAboutUs && !restaurant?.heardAboutSkipped && completedOrders > 0,
   };
 }

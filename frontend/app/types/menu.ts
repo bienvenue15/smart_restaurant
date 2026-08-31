@@ -28,14 +28,27 @@ export interface CartLine {
 
 export interface ScanSessionResult {
   sessionToken: string;
-  restaurant: { id: string; name: string; currency: string };
+  restaurant: { id: string; name: string; currency: string; logoUrl: string | null; primaryColor: string };
   table: { id: string; tableNumber: string };
+}
+
+export interface OrderItemSummary {
+  id: string;
+  quantity: number;
+  status: string;
+  subtotal: string;
+  specialRequest: string | null;
+  menuItem: { name: string };
 }
 
 export interface OrderSummary {
   id: string;
   orderNumber: string;
   status: string;
+  paymentStatus: string;
   totalAmount: string;
+  paidAmount: string;
   createdAt: string;
+  items?: OrderItemSummary[];
+  guestHeardAbout?: { skipped: boolean; channel: string | null; rating?: number | null; comment?: string | null } | null;
 }

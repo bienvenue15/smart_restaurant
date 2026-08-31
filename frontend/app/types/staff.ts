@@ -6,6 +6,8 @@ export interface DashboardStats {
   cashInHand: number;
   pendingWaiterCalls: number;
   pendingApprovals: number;
+  pendingLiabilities: number;
+  askHowYouFoundUs?: boolean;
 }
 
 export interface ShiftStatus {

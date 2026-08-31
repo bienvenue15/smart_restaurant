@@ -3,6 +3,7 @@ import { TableStatus } from '@prisma/client';
 import { prisma } from '@/config/prisma';
 import { Conflict, NotFound } from '@/utils/httpError';
 import { LIMIT_CHECKERS } from '@/modules/subscriptions/subscription.service';
+import { publishRealtime } from '@/services/realtime.service';
 
 /**
  * Opaque, unguessable QR token (not a structured/derivable string like the
@@ -22,15 +23,19 @@ export async function listTables(restaurantId: string) {
 
 export async function createTable(restaurantId: string, data: { tableNumber: string; seats?: number }) {
   await LIMIT_CHECKERS.tables(restaurantId);
-  return prisma.restaurantTable.create({
+  const table = await prisma.restaurantTable.create({
     data: { restaurantId, tableNumber: data.tableNumber, seats: data.seats ?? 4, qrCode: generateQrToken() },
   });
+  await publishRealtime({ channel: 'staff', type: 'table_status', restaurantId });
+  return table;
 }
 
 export async function updateTable(restaurantId: string, tableId: string, data: Partial<{ tableNumber: string; seats: number; status: TableStatus }>) {
   const table = await prisma.restaurantTable.findFirst({ where: { id: tableId, restaurantId } });
   if (!table) throw NotFound('Table not found');
-  return prisma.restaurantTable.update({ where: { id: tableId }, data });
+  const updated = await prisma.restaurantTable.update({ where: { id: tableId }, data });
+  await publishRealtime({ channel: 'staff', type: 'table_status', restaurantId });
+  return updated;
 }
 
 export async function deleteTable(restaurantId: string, tableId: string) {
@@ -41,6 +46,7 @@ export async function deleteTable(restaurantId: string, tableId: string) {
   if (activeOrder) throw Conflict('Cannot delete a table with an active order');
 
   await prisma.restaurantTable.delete({ where: { id: tableId } });
+  await publishRealtime({ channel: 'staff', type: 'table_status', restaurantId });
 }
 
 export async function resetTable(restaurantId: string, tableId: string, staffId: string) {
@@ -55,6 +61,7 @@ export async function resetTable(restaurantId: string, tableId: string, staffId:
     await tx.deviceTableLock.updateMany({ where: { tableId, isActive: true }, data: { isActive: false } });
     return result;
   });
+  await publishRealtime({ channel: 'staff', type: 'table_status', restaurantId });
 
   return updated;
 }

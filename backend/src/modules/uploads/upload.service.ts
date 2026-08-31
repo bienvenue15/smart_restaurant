@@ -35,3 +35,19 @@ export async function saveMenuItemImage(restaurantId: string, buffer: Buffer): P
 
   return `/uploads/menu/${restaurantId}/${filename}`;
 }
+
+export async function saveRestaurantLogo(restaurantId: string, buffer: Buffer): Promise<string> {
+  if (buffer.length === 0) throw BadRequest('Empty file');
+  if (buffer.length > MAX_IMAGE_BYTES) throw BadRequest(`Image too large (max ${MAX_IMAGE_BYTES / 1024 / 1024}MB)`);
+
+  const mime = sniffImageMime(buffer);
+  if (!mime) throw BadRequest('File is not a recognized image (jpeg/png/gif/webp)');
+
+  const dir = path.join(UPLOAD_ROOT, 'logos', restaurantId);
+  await fs.mkdir(dir, { recursive: true });
+
+  const filename = `${crypto.randomUUID()}.${MIME_TO_EXT[mime]}`;
+  await fs.writeFile(path.join(dir, filename), buffer);
+
+  return `/uploads/logos/${restaurantId}/${filename}`;
+}

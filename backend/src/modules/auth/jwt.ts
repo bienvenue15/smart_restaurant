@@ -6,6 +6,7 @@ export interface StaffAccessTokenPayload {
   sub: string; // staff user id
   role: StaffRole;
   restaurantId: string | null; // null only for SUPER_ADMIN
+  typ?: 'access' | '2fa';
 }
 
 export interface CustomerSessionTokenPayload {
@@ -16,7 +17,20 @@ export interface CustomerSessionTokenPayload {
 
 export function signStaffAccessToken(payload: StaffAccessTokenPayload): string {
   const options: jwt.SignOptions = { expiresIn: config.jwtAccessTtl as jwt.SignOptions['expiresIn'] };
-  return jwt.sign(payload, config.jwtAccessSecret, options);
+  return jwt.sign({ ...payload, typ: 'access' }, config.jwtAccessSecret, options);
+}
+
+/** Short-lived token issued after password check when 2FA is enabled. Cannot be used as a session. */
+export function signTwoFactorPendingToken(payload: { sub: string }): string {
+  return jwt.sign({ sub: payload.sub, typ: '2fa' }, config.jwtAccessSecret, { expiresIn: '5m' });
+}
+
+export function verifyTwoFactorPendingToken(token: string): { sub: string } {
+  const payload = jwt.verify(token, config.jwtAccessSecret) as StaffAccessTokenPayload;
+  if (payload.typ !== '2fa' || !payload.sub) {
+    throw new Error('Not a 2FA pending token');
+  }
+  return { sub: payload.sub };
 }
 
 export function signStaffRefreshToken(payload: { sub: string }): string {
@@ -25,7 +39,11 @@ export function signStaffRefreshToken(payload: { sub: string }): string {
 }
 
 export function verifyStaffAccessToken(token: string): StaffAccessTokenPayload {
-  return jwt.verify(token, config.jwtAccessSecret) as StaffAccessTokenPayload;
+  const payload = jwt.verify(token, config.jwtAccessSecret) as StaffAccessTokenPayload;
+  if (payload.typ === '2fa') {
+    throw new Error('2FA pending token cannot be used as a session');
+  }
+  return payload;
 }
 
 export function verifyStaffRefreshToken(token: string): { sub: string } {

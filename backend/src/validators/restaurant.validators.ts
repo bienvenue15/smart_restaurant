@@ -1,3 +1,4 @@
+import { PLATFORM_HEARD_ABOUT } from '@/utils/acquisition';
 import Joi from 'joi';
 
 export const registerRestaurantSchema = Joi.object({
@@ -15,6 +16,11 @@ export const registerRestaurantSchema = Joi.object({
     .allow('', null),
   address: Joi.string().max(500).allow('', null),
   city: Joi.string().max(100).default('Kigali'),
+  heardAboutUs: Joi.string()
+    .valid(...PLATFORM_HEARD_ABOUT)
+    .allow('', null),
+  heardAboutNote: Joi.string().max(200).allow('', null),
+  heardAboutSource: Joi.string().max(40).allow('', null),
 });
 
 export const updateRestaurantSchema = Joi.object({
@@ -22,7 +28,7 @@ export const updateRestaurantSchema = Joi.object({
   phone: Joi.string().max(20).allow('', null),
   address: Joi.string().max(500).allow('', null),
   city: Joi.string().max(100),
-  logoUrl: Joi.string().uri().allow('', null),
+  logoUrl: Joi.string().max(500).allow('', null),
   primaryColor: Joi.string()
     .pattern(/^#[0-9a-fA-F]{6}$/)
     .allow('', null),
@@ -31,9 +37,9 @@ export const updateRestaurantSchema = Joi.object({
     .allow('', null),
   taxRate: Joi.number().min(0).max(100),
   serviceCharge: Joi.number().min(0).max(100),
-});
-
-export const updateSettingSchema = Joi.object({
-  settingKey: Joi.string().min(1).max(100).required(),
-  settingValue: Joi.string().allow('', null),
+  heardAboutUs: Joi.string()
+    .valid(...PLATFORM_HEARD_ABOUT)
+    .allow(null),
+  heardAboutNote: Joi.string().max(200).allow('', null),
+  heardAboutSkipped: Joi.boolean(),
 });

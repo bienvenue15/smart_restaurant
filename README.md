@@ -1,44 +1,39 @@
 # Smart Restaurant
 
-This repository currently contains **two systems**:
+QR table ordering, kitchen display, waiter/cashier floor, and a platform admin console. Guests do not pay in the app — staff record cash, card, or mobile money.
 
-1. **The legacy PHP application** (repo root: `app/`, `api/`, `src/`, `assets/`, `index.php`, etc.) — the live, production system currently serving [smartresto.inovasiyo.rw](https://smartresto.inovasiyo.rw). This is the **source of truth for business functionality** during the migration and is not being modified.
-2. **The new platform** (`frontend/`, `backend/`, `docker/`) — a from-scratch rebuild on Nuxt 4 + Express + Prisma + PostgreSQL, under active development. See `docs/MIGRATION_PROGRESS.md` for current status.
+Stack: Nuxt 4 → Express `/api/v1` → Prisma → PostgreSQL.
 
-## Start here
+| Who | URL |
+|---|---|
+| Marketing / trial | `/` `/register` |
+| Guest menu | `/menu/<qr-token>` |
+| Staff | `/staff/login` |
+| Platform admin | same login; `SUPER_ADMIN` lands on `/admin` |
 
-- [`docs/CURRENT_SYSTEM_AUDIT.md`](docs/CURRENT_SYSTEM_AUDIT.md) — full forensic audit of the legacy application (architecture, database, auth, features, known bugs, integrations).
-- [`docs/SECURITY_AUDIT.md`](docs/SECURITY_AUDIT.md) — security findings on the legacy system, including one **critical, migration-independent action item** (hardcoded production credentials — see §1).
-- [`docs/TARGET_ARCHITECTURE.md`](docs/TARGET_ARCHITECTURE.md) — the new stack's design.
-- [`docs/DATABASE_MIGRATION_PLAN.md`](docs/DATABASE_MIGRATION_PLAN.md) — legacy MySQL schema → new PostgreSQL/Prisma schema mapping.
-- [`docs/FEATURE_PARITY_CHECKLIST.md`](docs/FEATURE_PARITY_CHECKLIST.md) — per-feature migration status.
-- [`docs/MIGRATION_PROGRESS.md`](docs/MIGRATION_PROGRESS.md) — phase-by-phase progress log.
+Languages: English, French, Kinyarwanda, Kiswahili.
 
-## New stack — local development
+**Do not promise:** in-app MoMo/card checkout, automatic inventory, or multi-location ERP. Those labels on plans are limits/tags, not modules.
 
-```bash
-# Backend
-cd backend
-cp ../.env.example ../.env   # fill in real values, especially JWT secrets
-npm install
-npm run prisma:migrate
-npm run prisma:seed
-npm run dev                  # http://localhost:4000
+## Production
 
-# Frontend (separate terminal)
-cd frontend
-npm install
-npm run dev                  # http://localhost:3000
-```
-
-Or via Docker Compose (requires Docker):
+See **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
 
 ```bash
-docker compose up --build
+cp .env.example .env   # fill secrets — never commit .env
+docker compose up --build -d
+docker compose exec backend npx prisma db seed
 ```
 
-## Legacy application
+Open `http://<host>/health` → `{ "status": "OK" }`. Put TLS in front (sample in `docker/nginx.conf.example`).
 
-The legacy PHP app has its own `.env`-driven configuration (`src/config.php`) and runs under Apache with `mod_rewrite` (see `.htaccess`). It is left untouched by this migration until feature parity is verified — see `docs/FEATURE_PARITY_CHECKLIST.md`.
+## Local development
 
-**Note:** the root `.env.example` in this repository now describes the *new* stack's environment variables (Docker Compose, backend, frontend). The legacy app's original `.env.example` content is preserved in git history (`git log --all -- .env.example`) — the legacy app's config primarily relies on `src/config.php` defaults, not a `.env` file, in practice.
+```bash
+cp .env.example .env   # JWT_ACCESS_SECRET and JWT_REFRESH_SECRET required
+
+cd backend && npm install && npm run prisma:migrate && npm run prisma:seed && npm run dev
+cd frontend && npm install && npm run dev
+```
+
+API: http://localhost:4000 · site: http://localhost:3000

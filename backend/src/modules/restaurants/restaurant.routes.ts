@@ -1,9 +1,12 @@
 import { Router } from 'express';
 import { requireStaffAuth } from '@/middleware/auth';
 import { requirePermission } from '@/middleware/permission';
+import { uploadImage } from '@/middleware/upload';
 import { validate } from '@/middleware/validate';
-import { registerRestaurantSchema, updateRestaurantSchema, updateSettingSchema } from '@/validators/restaurant.validators';
+import { BadRequest } from '@/utils/httpError';
+import { registerRestaurantSchema, updateRestaurantSchema } from '@/validators/restaurant.validators';
 import * as restaurantService from './restaurant.service';
+import { saveRestaurantLogo } from '@/modules/uploads/upload.service';
 
 export const publicRestaurantRouter = Router();
 
@@ -37,19 +40,12 @@ staffRestaurantRouter.patch('/me', requirePermission('manage_settings'), validat
   }
 });
 
-staffRestaurantRouter.get('/me/settings', requirePermission('manage_settings'), async (req, res, next) => {
+staffRestaurantRouter.post('/me/logo', requirePermission('manage_settings'), uploadImage, async (req, res, next) => {
   try {
-    const settings = await restaurantService.getSettings(req.staff!.restaurantId!);
-    res.json({ status: 'OK', data: settings });
-  } catch (err) {
-    next(err);
-  }
-});
-
-staffRestaurantRouter.put('/me/settings', requirePermission('manage_settings'), validate(updateSettingSchema), async (req, res, next) => {
-  try {
-    const setting = await restaurantService.setSetting(req.staff!.restaurantId!, req.body.settingKey, req.body.settingValue ?? null);
-    res.json({ status: 'OK', data: setting });
+    if (!req.file) throw BadRequest('No image file provided (field name: "image")');
+    const logoUrl = await saveRestaurantLogo(req.staff!.restaurantId!, req.file.buffer);
+    const restaurant = await restaurantService.updateRestaurant(req.staff!.restaurantId!, { logoUrl });
+    res.json({ status: 'OK', data: restaurant });
   } catch (err) {
     next(err);
   }

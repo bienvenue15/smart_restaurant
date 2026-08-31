@@ -6,7 +6,8 @@ import { prisma } from '@/config/prisma';
  * legacy's `activity_log` page which did the same merge
  * (docs/CURRENT_SYSTEM_AUDIT.md §4).
  */
-export async function getActivityLog(restaurantId: string, limit = 100) {
+export async function getActivityLog(restaurantId: string, opts: { limit?: number; search?: string } = {}) {
+  const limit = opts.limit ?? 100;
   const [activity, audit] = await Promise.all([
     prisma.staffActivityLog.findMany({
       where: { staff: { restaurantId } },
@@ -22,7 +23,7 @@ export async function getActivityLog(restaurantId: string, limit = 100) {
     }),
   ]);
 
-  const merged = [
+  let merged = [
     ...activity.map((a) => ({
       source: 'activity' as const,
       id: a.id,
@@ -40,6 +41,16 @@ export async function getActivityLog(restaurantId: string, limit = 100) {
       createdAt: a.createdAt,
     })),
   ];
+
+  const q = opts.search?.trim().toLowerCase();
+  if (q) {
+    merged = merged.filter(
+      (row) =>
+        row.staffName.toLowerCase().includes(q) ||
+        row.action.toLowerCase().includes(q) ||
+        (row.description ?? '').toLowerCase().includes(q),
+    );
+  }
 
   return merged.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, limit);
 }

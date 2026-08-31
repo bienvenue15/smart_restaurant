@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { OrderItemStatus, OrderStatus } from '@prisma/client';
-import { canCancelOrder, deriveOrderStatusFromItems, waiterAllowedOrderTransitions } from '@/modules/orders/order.state';
+import { OrderItemStatus, OrderStatus, PaymentStatus } from '@prisma/client';
+import {
+  canCancelOrder,
+  canRefundPayment,
+  deriveOrderStatusFromItems,
+  isBeverageCategory,
+  REFUND_WINDOW_MS,
+  shouldReleaseTableAfterSettlement,
+  waiterAllowedOrderTransitions,
+} from '@/modules/orders/order.state';
 
 describe('deriveOrderStatusFromItems', () => {
   it('returns CONFIRMED when there are no items yet', () => {
@@ -56,5 +64,56 @@ describe('canCancelOrder', () => {
   it('blocks cancellation once the order is no longer PENDING', () => {
     const createdAt = new Date();
     expect(canCancelOrder(OrderStatus.CONFIRMED, createdAt, createdAt)).toBe(false);
+  });
+});
+
+describe('isBeverageCategory', () => {
+  it('matches the legacy name heuristic', () => {
+    expect(isBeverageCategory('Drinks')).toBe(true);
+    expect(isBeverageCategory('beverages')).toBe(true);
+    expect(isBeverageCategory('Mains')).toBe(false);
+  });
+});
+
+describe('shouldReleaseTableAfterSettlement', () => {
+  it('releases when the table has no other open unpaid orders', () => {
+    expect(shouldReleaseTableAfterSettlement([])).toBe(true);
+    expect(
+      shouldReleaseTableAfterSettlement([
+        { status: OrderStatus.COMPLETED, paymentStatus: PaymentStatus.PAID },
+        { status: OrderStatus.CANCELLED, paymentStatus: PaymentStatus.UNPAID },
+      ]),
+    ).toBe(true);
+  });
+
+  it('keeps the table occupied when another unpaid or partial order remains', () => {
+    expect(
+      shouldReleaseTableAfterSettlement([{ status: OrderStatus.CONFIRMED, paymentStatus: PaymentStatus.UNPAID }]),
+    ).toBe(false);
+    expect(
+      shouldReleaseTableAfterSettlement([{ status: OrderStatus.SERVED, paymentStatus: PaymentStatus.PARTIAL }]),
+    ).toBe(false);
+  });
+});
+
+describe('canRefundPayment', () => {
+  it('allows a refund within 24 hours of payment', () => {
+    const paidAt = new Date();
+    expect(canRefundPayment(paidAt, null, new Date(paidAt.getTime() + 12 * 60 * 60 * 1000))).toBe(true);
+  });
+
+  it('blocks a refund after 24 hours', () => {
+    const paidAt = new Date();
+    expect(canRefundPayment(paidAt, null, new Date(paidAt.getTime() + REFUND_WINDOW_MS + 1))).toBe(false);
+  });
+
+  it('falls back to the latest payment date when paidAt is missing', () => {
+    const paymentDate = new Date();
+    expect(canRefundPayment(null, paymentDate, new Date(paymentDate.getTime() + 1000))).toBe(true);
+    expect(canRefundPayment(null, paymentDate, new Date(paymentDate.getTime() + REFUND_WINDOW_MS + 1))).toBe(false);
+  });
+
+  it('blocks a refund when there is no payment timestamp', () => {
+    expect(canRefundPayment(null, null)).toBe(false);
   });
 });

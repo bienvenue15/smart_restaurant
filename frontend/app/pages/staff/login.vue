@@ -55,7 +55,7 @@ async function handleSubmit() {
 
     const result = await api.post<LoginResult>(
       '/auth/login',
-      { username: username.value, password: password.value },
+      { username: username.value.trim(), password: password.value },
       { successMessage: false },
     );
     if (result.requiresTwoFactor && result.pendingToken) {

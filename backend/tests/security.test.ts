@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Secret, TOTP } from 'otpauth';
 import {
+  signCustomerSessionToken,
   signStaffAccessToken,
   signTwoFactorPendingToken,
   verifyStaffAccessToken,
@@ -21,6 +22,11 @@ describe('2FA pending tokens', () => {
     const access = signStaffAccessToken({ sub: 'staff-1', role: 'WAITER', restaurantId: 'r1' });
     expect(verifyStaffAccessToken(access).sub).toBe('staff-1');
     expect(() => verifyTwoFactorPendingToken(access)).toThrow(/Not a 2FA/);
+  });
+
+  it('rejects a customer table-session token used as a staff session', () => {
+    const customer = signCustomerSessionToken({ sub: 'lock-1', restaurantId: 'rest-a', tableId: 'table-1' });
+    expect(() => verifyStaffAccessToken(customer)).toThrow(/Not a staff access token/);
   });
 });
 

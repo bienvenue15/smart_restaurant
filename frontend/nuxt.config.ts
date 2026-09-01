@@ -112,6 +112,12 @@ export default defineNuxtConfig({
       // Same-origin /api/v1 is proxied to Express so the browser never talks
       // to :4000 directly (which shows as a failed connection on the login page).
       apiBaseUrl: publicApiBaseUrl(),
+      i18n: {
+        // @nuxtjs/i18n needs an absolute origin to build hreflang/SEO links.
+        // Override at runtime with NUXT_PUBLIC_I18N_BASE_URL (docker sets this
+        // from FRONTEND_URL).
+        baseUrl: process.env.NUXT_PUBLIC_SITE_URL || process.env.FRONTEND_URL || 'http://localhost:3000',
+      },
     },
   },
 
@@ -126,6 +132,7 @@ export default defineNuxtConfig({
   i18n: {
     // Preserves the legacy app's real, used i18n support
     // (docs/CURRENT_SYSTEM_AUDIT.md §8: en/fr/rw/sw via src/Language.php).
+    baseUrl: process.env.NUXT_PUBLIC_SITE_URL || process.env.FRONTEND_URL || 'http://localhost:3000',
     locales: [
       { code: 'en', language: 'en', name: 'English', file: 'en.json' },
       { code: 'fr', language: 'fr', name: 'Français', file: 'fr.json' },

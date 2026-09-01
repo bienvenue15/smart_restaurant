@@ -77,7 +77,7 @@ export function useAuthStore() {
           credentials: 'include',
           headers: extraHeaders,
         });
-        if (!response.ok) return false;
+        if (response.status === 204 || !response.ok) return false;
         const body = await response.json();
         if (!body?.data?.accessToken) return false;
         setSession(body.data.accessToken, body.data.staff);

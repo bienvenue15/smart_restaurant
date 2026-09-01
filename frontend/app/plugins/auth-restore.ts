@@ -7,10 +7,23 @@
  * before route middleware runs, on the two request shapes that lose
  * in-memory state: an SSR request (cookie read from the incoming request)
  * and a client-only cold load (cookie sent automatically by the browser).
+ *
+ * Public auth pages are skipped: posting /auth/refresh there always 401s
+ * for a logged-out visitor and shows up as a scary console error on the
+ * login form itself.
  */
+function isPublicStaffAuthPath(path: string) {
+  return (
+    path === '/staff/login' ||
+    path.startsWith('/staff/forgot-password') ||
+    path.startsWith('/staff/reset-password')
+  );
+}
+
 export default defineNuxtPlugin(async () => {
   const route = useRoute();
   const adminPath = useAdminPath();
+  if (isPublicStaffAuthPath(route.path)) return;
   if (!route.path.startsWith('/staff') && !adminPath.isAdminRoute(route.path)) return;
 
   const auth = useAuthStore();

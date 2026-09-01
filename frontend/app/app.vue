@@ -3,7 +3,7 @@
 // stays hardcoded to "en" (set in nuxt.config.ts) even after switching
 // languages, which is wrong for accessibility/SEO regardless of how
 // complete the on-page translations are.
-const i18nHead = useLocaleHead();
+const i18nHead = useLocaleHead({ seo: false });
 useHead({
   htmlAttrs: { lang: computed(() => i18nHead.value.htmlAttrs?.lang) },
 });

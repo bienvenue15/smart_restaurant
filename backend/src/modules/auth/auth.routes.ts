@@ -3,7 +3,6 @@ import { validate } from '@/middleware/validate';
 import { requireStaffAuth } from '@/middleware/auth';
 import { requireSuperAdmin } from '@/middleware/superAdmin';
 import { config } from '@/config/env';
-import { Unauthorized } from '@/utils/httpError';
 import {
   changePasswordSchema,
   disableTwoFactorSchema,
@@ -58,7 +57,13 @@ authRouter.post('/login', validate(staffLoginSchema), async (req, res, next) => 
 authRouter.post('/refresh', async (req, res, next) => {
   try {
     const refreshToken = req.cookies?.[REFRESH_COOKIE_NAME];
-    if (!refreshToken) throw Unauthorized('No refresh session found — sign in again');
+    // No cookie is the logged-out default (cold visit to /staff/*), not an
+    // auth failure — return an empty success so the browser doesn't log a
+    // 401. Invalid/expired cookies still 401 below.
+    if (!refreshToken) {
+      res.status(204).end();
+      return;
+    }
     const result = await authService.refresh(refreshToken);
     setRefreshCookie(res, result.refreshToken);
     res.json({ status: 'OK', data: { accessToken: result.accessToken, staff: result.staff } });

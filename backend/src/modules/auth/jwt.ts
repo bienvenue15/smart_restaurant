@@ -43,6 +43,9 @@ export function verifyStaffAccessToken(token: string): StaffAccessTokenPayload {
   if (payload.typ === '2fa') {
     throw new Error('2FA pending token cannot be used as a session');
   }
+  if (payload.typ !== 'access' || !payload.sub || !payload.role) {
+    throw new Error('Not a staff access token');
+  }
   return payload;
 }
 

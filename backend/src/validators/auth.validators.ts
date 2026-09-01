@@ -1,7 +1,7 @@
 import Joi from 'joi';
 
 export const staffLoginSchema = Joi.object({
-  username: Joi.string().min(3).max(50).required(),
+  username: Joi.string().trim().min(3).max(200).required(),
   password: Joi.string().min(6).max(100).required(),
 });
 

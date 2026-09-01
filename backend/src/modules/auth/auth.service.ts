@@ -104,7 +104,13 @@ async function issueSession(staff: {
  *    SUPER_ADMIN is just another row with that role.
  */
 export async function login(username: string, password: string) {
-  const staff = await prisma.staffUser.findUnique({ where: { username } });
+  const identifier = username.trim();
+  let staff = await prisma.staffUser.findUnique({ where: { username: identifier } });
+  if (!staff && identifier.includes('@')) {
+    staff = await prisma.staffUser.findFirst({
+      where: { email: { equals: identifier, mode: 'insensitive' } },
+    });
+  }
   if (!staff || !staff.isActive) throw Unauthorized('Invalid username or password');
 
   const valid = await bcrypt.compare(password, staff.passwordHash);
